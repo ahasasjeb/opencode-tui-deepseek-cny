@@ -29,8 +29,6 @@
 
 ## 安装
 
-发布到 npm 后：
-
 ```bash
 opencode plugin opencode-tui-deepseek-cny
 ```

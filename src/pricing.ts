@@ -1,6 +1,25 @@
 export const DEEPSEEK_MODELS = ["deepseek-v4-flash", "deepseek-v4-pro"] as const
 export type DeepseekModelID = (typeof DEEPSEEK_MODELS)[number]
 
+export const KIMI_CHINA_MODELS = ["kimi-k2.5", "kimi-k2.6"] as const
+export type KimiChinaModelID = (typeof KIMI_CHINA_MODELS)[number]
+
+export const TRACKED_PROVIDERS = [
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    env: ["DEEPSEEK_API_KEY"],
+  },
+  {
+    id: "moonshotai-cn",
+    label: "Kimi CN",
+    env: ["MOONSHOT_API_KEY"],
+  },
+] as const
+
+export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
+export type TrackedModelID = DeepseekModelID | KimiChinaModelID
+
 export const PRO_DISCOUNT_START_BEIJING = "2026-04-26T20:15:00+08:00"
 export const PRO_DISCOUNT_END_BEIJING = "2026-05-31T23:59:59+08:00"
 
@@ -32,7 +51,10 @@ export type UsageRecord = {
 }
 
 export type ModelSubtotal = {
-  modelID: DeepseekModelID
+  providerID: TrackedProviderID
+  providerLabel: string
+  modelID: TrackedModelID
+  modelLabel: string
   turns: number
   cacheHitInputTokens: number
   cacheMissInputTokens: number
@@ -50,6 +72,14 @@ export type SessionCostSummary = {
   reasoningTokens: number
   costCny: number
   models: ModelSubtotal[]
+}
+
+type ModelPriceEntry = {
+  providerID: TrackedProviderID
+  providerLabel: string
+  modelID: TrackedModelID
+  modelLabel: string
+  priceFor: (time: number) => Price
 }
 
 const flashPrice: Price = {
@@ -73,16 +103,71 @@ const proDiscountPrice: Price = {
   discounted: true,
 }
 
-export function priceForModel(modelID: DeepseekModelID, time = Date.now()): Price {
-  if (modelID === "deepseek-v4-flash") return flashPrice
-  if (time >= Date.parse(PRO_DISCOUNT_START_BEIJING) && time <= Date.parse(PRO_DISCOUNT_END_BEIJING)) {
-    return proDiscountPrice
-  }
-  return proNormalPrice
+const kimiK25Price: Price = {
+  cacheHitInput: 0.7,
+  cacheMissInput: 4,
+  output: 21,
+  discounted: false,
 }
 
-export function calculateDeepseekSession(records: readonly UsageRecord[]): SessionCostSummary {
-  const models = DEEPSEEK_MODELS.map((modelID) => subtotal(modelID, records)).filter((item) => item.turns > 0)
+const kimiK26Price: Price = {
+  cacheHitInput: 1.1,
+  cacheMissInput: 6.5,
+  output: 27,
+  discounted: false,
+}
+
+const MODEL_PRICES: readonly ModelPriceEntry[] = [
+  {
+    providerID: "deepseek",
+    providerLabel: "DeepSeek",
+    modelID: "deepseek-v4-flash",
+    modelLabel: "V4 Flash",
+    priceFor: () => flashPrice,
+  },
+  {
+    providerID: "deepseek",
+    providerLabel: "DeepSeek",
+    modelID: "deepseek-v4-pro",
+    modelLabel: "V4 Pro",
+    priceFor: (time) =>
+      time >= Date.parse(PRO_DISCOUNT_START_BEIJING) && time <= Date.parse(PRO_DISCOUNT_END_BEIJING)
+        ? proDiscountPrice
+        : proNormalPrice,
+  },
+  {
+    providerID: "moonshotai-cn",
+    providerLabel: "Kimi CN",
+    modelID: "kimi-k2.5",
+    modelLabel: "K2.5",
+    priceFor: () => kimiK25Price,
+  },
+  {
+    providerID: "moonshotai-cn",
+    providerLabel: "Kimi CN",
+    modelID: "kimi-k2.6",
+    modelLabel: "K2.6",
+    priceFor: () => kimiK26Price,
+  },
+]
+
+export function trackedProvider(value: string) {
+  return TRACKED_PROVIDERS.find((item) => item.id === value)
+}
+
+export function trackedModel(providerID: string, modelID: string) {
+  return MODEL_PRICES.find((item) => item.providerID === providerID && item.modelID === modelID)
+}
+
+export function priceForModel(modelID: TrackedModelID, time = Date.now()): Price {
+  if (modelID === "deepseek-v4-flash") return flashPrice
+  if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time)
+  if (modelID === "kimi-k2.5") return kimiK25Price
+  return kimiK26Price
+}
+
+export function calculateTrackedSession(records: readonly UsageRecord[]): SessionCostSummary {
+  const models = MODEL_PRICES.map((entry) => subtotal(entry, records)).filter((item) => item.turns > 0)
 
   return {
     turns: models.reduce((sum, item) => sum + item.turns, 0),
@@ -95,18 +180,25 @@ export function calculateDeepseekSession(records: readonly UsageRecord[]): Sessi
   }
 }
 
-function subtotal(modelID: DeepseekModelID, records: readonly UsageRecord[]): ModelSubtotal {
+export function calculateDeepseekSession(records: readonly UsageRecord[]): SessionCostSummary {
+  return calculateTrackedSession(records.filter((item) => item.providerID === "deepseek"))
+}
+
+function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): ModelSubtotal {
   return records
-    .filter((item) => item.providerID === "deepseek" && item.modelID === modelID)
+    .filter((item) => item.providerID === entry.providerID && item.modelID === entry.modelID)
     .reduce<ModelSubtotal>(
       (sum, item) => {
-        const price = priceForModel(modelID, item.time?.completed ?? item.time?.created ?? Date.now())
+        const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now())
         const cacheHitInputTokens = safe(item.tokens.cache.read)
         const cacheMissInputTokens = safe(item.tokens.input) + safe(item.tokens.cache.write)
         const outputTokens = safe(item.tokens.output) + safe(item.tokens.reasoning)
 
         return {
-          modelID,
+          providerID: entry.providerID,
+          providerLabel: entry.providerLabel,
+          modelID: entry.modelID,
+          modelLabel: entry.modelLabel,
           turns: sum.turns + 1,
           cacheHitInputTokens: sum.cacheHitInputTokens + cacheHitInputTokens,
           cacheMissInputTokens: sum.cacheMissInputTokens + cacheMissInputTokens,
@@ -123,7 +215,10 @@ function subtotal(modelID: DeepseekModelID, records: readonly UsageRecord[]): Mo
         }
       },
       {
-        modelID,
+        providerID: entry.providerID,
+        providerLabel: entry.providerLabel,
+        modelID: entry.modelID,
+        modelLabel: entry.modelLabel,
         turns: 0,
         cacheHitInputTokens: 0,
         cacheMissInputTokens: 0,

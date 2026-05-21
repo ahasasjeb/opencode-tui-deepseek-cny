@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { calculateDeepseekSession, priceForModel } from "../src/pricing.js"
+import { calculateDeepseekSession, calculateTrackedSession, priceForModel } from "../src/pricing.js"
 
 test("按 DeepSeek V4 Flash 人民币价格统计", () => {
   const summary = calculateDeepseekSession([
@@ -73,4 +73,38 @@ test("只统计 deepseek 提供商和指定 V4 模型", () => {
 
   expect(summary.turns).toBe(0)
   expect(summary.costCny).toBe(0)
+})
+
+test("按 Kimi China K2.5 和 K2.6 人民币价格统计", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "moonshotai-cn",
+      modelID: "kimi-k2.5",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "moonshotai-cn",
+      modelID: "kimi-k2.6",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(60.3)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["kimi-k2.5", "kimi-k2.6"])
 })

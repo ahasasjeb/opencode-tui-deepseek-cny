@@ -273,10 +273,10 @@ function Summary(props: { theme: TuiPluginApi["theme"]["current"]; summary: Sess
       <MetricRow theme={props.theme} label="费用" value={formatMoney(props.summary.costCny)} strong />
       <MetricRow theme={props.theme} label="调用" value={`${props.summary.turns} 次`} />
       <text fg={props.theme.textMuted}>
-        入 {formatTokens(props.summary.cacheMissInputTokens)} · 缓 {formatTokens(props.summary.cacheHitInputTokens)}
+        输入 {formatTokens(props.summary.cacheMissInputTokens)} · 缓存 {formatTokens(props.summary.cacheHitInputTokens)}
       </text>
       <text fg={props.theme.textMuted}>
-        出 {formatTokens(props.summary.outputTokens)} · 推 {formatTokens(props.summary.reasoningTokens)}
+        输出 {formatTokens(props.summary.outputTokens)} · 推理 {formatTokens(props.summary.reasoningTokens)}
       </text>
       <For each={props.summary.models}>
         {(item) => (
@@ -297,7 +297,7 @@ function ActivationPrompt(props: { theme: TuiPluginApi["theme"]["current"] }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
-        使用 DeepSeek 或 Kimi CN 模型返回一次消息后激活
+        使用 DeepSeek 或 moonshot China 模型返回一次消息后激活
       </text>
     </box>
   )

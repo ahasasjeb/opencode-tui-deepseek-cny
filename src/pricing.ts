@@ -12,7 +12,7 @@ export const TRACKED_PROVIDERS = [
   },
   {
     id: "moonshotai-cn",
-    label: "Kimi CN",
+    label: "moonshot China",
     env: ["MOONSHOT_API_KEY"],
   },
 ] as const
@@ -124,14 +124,14 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
   },
   {
     providerID: "moonshotai-cn",
-    providerLabel: "Kimi CN",
+    providerLabel: "moonshot China",
     modelID: "kimi-k2.5",
     modelLabel: "K2.5",
     priceFor: () => kimiK25Price,
   },
   {
     providerID: "moonshotai-cn",
-    providerLabel: "Kimi CN",
+    providerLabel: "moonshot China",
     modelID: "kimi-k2.6",
     modelLabel: "K2.6",
     priceFor: () => kimiK26Price,

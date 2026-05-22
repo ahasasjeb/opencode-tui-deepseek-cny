@@ -1,6 +1,6 @@
 # llm-cny
 
-在 OpenCode TUI 右侧栏显示 DeepSeek V4、Kimi CN 的人民币费用和账户余额。
+在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额。
 
 ## 功能
 
@@ -76,4 +76,4 @@ bun run build
 
 ## 说明
 
-DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，Kimi CN 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费以官方账单为准。
+DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，moonshot China 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费以官方账单为准。

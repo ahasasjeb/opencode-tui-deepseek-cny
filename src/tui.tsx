@@ -1,11 +1,11 @@
 /** @jsxImportSource @opentui/solid */
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui"
+import type { Message, Part, Session } from "@opencode-ai/sdk/v2"
 import { RGBA } from "@opentui/core"
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js"
 import { fetchDisplayBalance, type DisplayBalance } from "./balance.js"
 import {
   calculateTrackedSession,
-  PRO_DISCOUNT_END_BEIJING,
   TRACKED_PROVIDERS,
   trackedModel,
   type SessionCostSummary,
@@ -48,8 +48,14 @@ const money = new Intl.NumberFormat("zh-CN", {
 function View(props: { api: TuiPluginApi; options: Options; session_id: string }) {
   const theme = () => props.api.theme.current
   const [balances, setBalances] = createSignal<BalanceStateMap>({})
+  const [remoteChildMessages, setRemoteChildMessages] = createSignal<ReadonlyArray<Message>>([])
   const session = createMemo(() => props.api.state.session.get(props.session_id))
   const messages = createMemo(() => props.api.state.session.messages(props.session_id))
+  const localChildSessionIDs = createMemo(() => taskChildSessionIDs(props.api, messages()))
+  const localChildMessages = createMemo(() =>
+    localChildSessionIDs().flatMap((sessionID) => props.api.state.session.messages(sessionID)),
+  )
+  const usageMessages = createMemo(() => mergeMessages(messages(), localChildMessages(), remoteChildMessages()))
   const tokens = createMemo(() => {
     const result: Partial<Record<TrackedProviderID, string>> = {}
     for (const provider of TRACKED_PROVIDERS) {
@@ -59,7 +65,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
   const activeProviders = createMemo(() => {
     const ids = new Set<TrackedProviderID>()
-    for (const item of messages()) {
+    for (const item of usageMessages()) {
       if (item.role !== "assistant") continue
       const model = trackedModel(item.providerID, item.modelID)
       if (model) ids.add(model.providerID)
@@ -68,7 +74,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
   const activated = createMemo(() => activeProviders().length > 0)
   const completedTrackedReplies = createMemo(() =>
-    messages()
+    usageMessages()
       .flatMap((item) => {
         if (item.role !== "assistant") return []
         if (!trackedModel(item.providerID, item.modelID)) return []
@@ -77,9 +83,19 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
       })
       .join("|"),
   )
+  const childUsageRefreshKey = createMemo(() =>
+    [
+      props.session_id,
+      session()?.time.updated ?? "",
+      localChildSessionIDs().join(","),
+      messages()
+        .map((item) => `${item.id}:${item.role === "assistant" ? (item.time.completed ?? "") : ""}`)
+        .join("|"),
+    ].join("|"),
+  )
   const summary = createMemo(() =>
     calculateTrackedSession(
-      messages().flatMap((item) => {
+      usageMessages().flatMap((item) => {
         if (item.role !== "assistant") return []
         return [
           {
@@ -97,6 +113,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const controllers = new Map<TrackedProviderID, AbortController>()
   let previousTokenSignature = tokenSignature(tokens())
   let previousCompletedTrackedReplies = ""
+  let childUsageRequest = 0
 
   const setProviderBalance = (providerID: TrackedProviderID, state: BalanceState) => {
     setBalances((current) => ({
@@ -131,6 +148,33 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     )
   }
 
+  const refreshChildUsage = async () => {
+    const request = ++childUsageRequest
+    try {
+      const children = await props.api.client.session.children({ sessionID: props.session_id })
+      if (request !== childUsageRequest) return
+
+      const ids = new Set<string>(localChildSessionIDs())
+      for (const child of children.data ?? []) {
+        if (isSubagentSession(child)) ids.add(child.id)
+      }
+
+      if (ids.size === 0) {
+        setRemoteChildMessages([])
+        return
+      }
+
+      const responses = await Promise.all(
+        [...ids].map((sessionID) => props.api.client.session.messages({ sessionID })),
+      )
+      if (request !== childUsageRequest) return
+
+      setRemoteChildMessages(responses.flatMap((response) => (response.data ?? []).map((item) => item.info)))
+    } catch {
+      if (request === childUsageRequest) setRemoteChildMessages([])
+    }
+  }
+
   const refreshActive = () => {
     for (const provider of activeProviders()) {
       refreshProvider(provider.id)
@@ -143,6 +187,11 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     previousTokenSignature = current
     if (!activated()) return
     refreshActive()
+  })
+
+  createEffect(() => {
+    childUsageRefreshKey()
+    void refreshChildUsage()
   })
 
   createEffect(() => {
@@ -237,11 +286,6 @@ function Summary(props: { theme: TuiPluginApi["theme"]["current"]; summary: Sess
               label={`${item.providerLabel} ${item.modelLabel}`}
               value={`${item.turns} 次 · ${formatMoney(item.costCny)}`}
             />
-            <Show when={item.modelID === "deepseek-v4-pro" && item.discountedTurns > 0}>
-              <text fg={props.theme.warning} wrapMode="word">
-                特价 {item.discountedTurns} 次，至 {formatDiscountEnd()}
-              </text>
-            </Show>
           </box>
         )}
       </For>
@@ -412,6 +456,37 @@ function readString(value: unknown, key: string) {
   return typeof value[key] === "string" ? value[key] : undefined
 }
 
+function taskChildSessionIDs(api: TuiPluginApi, messages: ReadonlyArray<Message>) {
+  const result = new Set<string>()
+  for (const message of messages) {
+    for (const part of api.state.part(message.id)) {
+      const sessionID = taskChildSessionID(part)
+      if (sessionID) result.add(sessionID)
+    }
+  }
+  return [...result].sort()
+}
+
+function taskChildSessionID(part: Part) {
+  if (part.type !== "tool" || part.tool !== "task") return undefined
+  const metadata = "metadata" in part.state ? part.state.metadata : undefined
+  return readString(metadata, "sessionId")
+}
+
+function mergeMessages(...groups: ReadonlyArray<ReadonlyArray<Message>>) {
+  const result = new Map<string, Message>()
+  for (const group of groups) {
+    for (const message of group) {
+      result.set(message.id, message)
+    }
+  }
+  return [...result.values()]
+}
+
+function isSubagentSession(session: Session) {
+  return session.title.includes(" subagent)")
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -441,16 +516,6 @@ function formatTokens(value: number) {
 function formatTime(value: number) {
   return new Date(value).toLocaleTimeString("zh-CN", {
     hour12: false,
-  })
-}
-
-function formatDiscountEnd() {
-  return new Date(PRO_DISCOUNT_END_BEIJING).toLocaleString("zh-CN", {
-    hour12: false,
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   })
 }
 

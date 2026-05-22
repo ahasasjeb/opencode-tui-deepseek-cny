@@ -1,4 +1,4 @@
-# opencode-tui-deepseek-cny
+# llm-cny
 
 在 OpenCode TUI 右侧栏显示 DeepSeek V4、Kimi CN 的人民币费用和账户余额。
 
@@ -8,7 +8,7 @@
 - 统计 `moonshotai-cn` 提供商下的 `kimi-k2.5`、`kimi-k2.6`。
 - 基于当前 session 的 assistant 消息 token 用量重新计算人民币费用。
 - 区分缓存命中输入、缓存未命中输入、输出 token；推理 token 按输出价格计费。
-- `deepseek-v4-pro` 在北京时间 `2026-04-26 20:15:00` 到 `2026-05-31 23:59:59` 内使用特价。
+- `deepseek-v4-pro` 使用常态化特价。
 - 新会话未使用已支持模型时只显示激活提示，不显示费用和余额信息。
 - 每次已支持模型回复完成后自动刷新对应余额，仍可手动点击“刷新”或按间隔自动刷新。
 - 自动复用已有 API Key 读取余额，来源依次为：
@@ -25,15 +25,14 @@
 | 模型 | 缓存命中输入 | 缓存未命中输入 | 输出 |
 | --- | ---: | ---: | ---: |
 | deepseek-v4-flash | 0.02 元 | 1 元 | 2 元 |
-| deepseek-v4-pro 特价期 | 0.025 元 | 3 元 | 6 元 |
-| deepseek-v4-pro 原价 | 0.1 元 | 12 元 | 24 元 |
+| deepseek-v4-pro | 0.025 元 | 3 元 | 6 元 |
 | kimi-k2.5 | 0.7 元 | 4 元 | 21 元 |
 | kimi-k2.6 | 1.1 元 | 6.5 元 | 27 元 |
 
 ## 安装
 
 ```bash
-opencode plugin opencode-tui-deepseek-cny
+opencode plugin llm-cny
 ```
 
 或在 `.opencode/tui.jsonc` 中手动添加：
@@ -43,7 +42,7 @@ opencode plugin opencode-tui-deepseek-cny
   "$schema": "https://opencode.ai/tui.json",
   "plugin": [
     [
-      "opencode-tui-deepseek-cny",
+      "llm-cny",
       {
         "balanceRefreshMs": 600000,
         "showWhenEmpty": true
@@ -66,7 +65,7 @@ bun run build
 
 ```jsonc
 {
-  "plugin": ["./opencode-tui-deepseek-cny/src/tui.tsx"]
+  "plugin": ["./llm-cny/src/tui.tsx"]
 }
 ```
 

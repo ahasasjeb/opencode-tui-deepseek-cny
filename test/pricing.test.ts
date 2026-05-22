@@ -23,21 +23,21 @@ test("按 DeepSeek V4 Flash 人民币价格统计", () => {
   expect(summary.models[0]?.cacheMissInputTokens).toBe(1_000_000)
 })
 
-test("DeepSeek V4 Pro 在优惠期内采用特价", () => {
+test("DeepSeek V4 Pro 常态化采用特价", () => {
   const price = priceForModel("deepseek-v4-pro", Date.parse("2026-05-20T12:00:00+08:00"))
 
   expect(price.cacheHitInput).toBe(0.025)
   expect(price.cacheMissInput).toBe(3)
   expect(price.output).toBe(6)
-  expect(price.discounted).toBe(true)
+  expect(price.discounted).toBe(false)
 })
 
-test("DeepSeek V4 Pro 优惠期外采用原价", () => {
+test("DeepSeek V4 Pro 不再按日期恢复原价", () => {
   const price = priceForModel("deepseek-v4-pro", Date.parse("2026-06-01T00:00:00+08:00"))
 
-  expect(price.cacheHitInput).toBe(0.1)
-  expect(price.cacheMissInput).toBe(12)
-  expect(price.output).toBe(24)
+  expect(price.cacheHitInput).toBe(0.025)
+  expect(price.cacheMissInput).toBe(3)
+  expect(price.output).toBe(6)
   expect(price.discounted).toBe(false)
 })
 

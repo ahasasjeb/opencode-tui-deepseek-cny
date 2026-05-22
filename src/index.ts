@@ -1,8 +1,6 @@
 export {
   DEEPSEEK_MODELS,
   KIMI_CHINA_MODELS,
-  PRO_DISCOUNT_END_BEIJING,
-  PRO_DISCOUNT_START_BEIJING,
   TRACKED_PROVIDERS,
   calculateDeepseekSession,
   calculateTrackedSession,

@@ -20,9 +20,6 @@ export const TRACKED_PROVIDERS = [
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
 export type TrackedModelID = DeepseekModelID | KimiChinaModelID
 
-export const PRO_DISCOUNT_START_BEIJING = "2026-04-26T20:15:00+08:00"
-export const PRO_DISCOUNT_END_BEIJING = "2026-05-31T23:59:59+08:00"
-
 type Price = {
   cacheHitInput: number
   cacheMissInput: number
@@ -89,18 +86,11 @@ const flashPrice: Price = {
   discounted: false,
 }
 
-const proNormalPrice: Price = {
-  cacheHitInput: 0.1,
-  cacheMissInput: 12,
-  output: 24,
-  discounted: false,
-}
-
-const proDiscountPrice: Price = {
+const proPrice: Price = {
   cacheHitInput: 0.025,
   cacheMissInput: 3,
   output: 6,
-  discounted: true,
+  discounted: false,
 }
 
 const kimiK25Price: Price = {
@@ -130,10 +120,7 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     providerLabel: "DeepSeek",
     modelID: "deepseek-v4-pro",
     modelLabel: "V4 Pro",
-    priceFor: (time) =>
-      time >= Date.parse(PRO_DISCOUNT_START_BEIJING) && time <= Date.parse(PRO_DISCOUNT_END_BEIJING)
-        ? proDiscountPrice
-        : proNormalPrice,
+    priceFor: () => proPrice,
   },
   {
     providerID: "moonshotai-cn",

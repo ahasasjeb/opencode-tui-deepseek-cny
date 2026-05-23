@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "llm-cny",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "在 OpenCode TUI 右侧栏显示 DeepSeek V4 与 moonshot China 人民币费用和账户余额。",
   "type": "module",
   "license": "MIT",

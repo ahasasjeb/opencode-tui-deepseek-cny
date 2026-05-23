@@ -271,9 +271,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
         />
         <Show when={updateVersion() && !updateBannerDismissed()}>
           <text fg={activated() ? theme().warning : theme().textMuted} wrapMode="word" onMouseDown={dismissUpdateBanner}>
-            有新版本 {updateVersion()}，运行 <b>opencode plugin update {PLUGIN_NAME}</b> 更新
+            有新版本 {updateVersion()}，运行 <b>opencode plugin {PLUGIN_NAME}@{updateVersion()} --force</b> 更新
             <Show when={activated()}>
-              <text fg={theme().textMuted}> · 点击关闭</text>
+              <span style={{ fg: theme().textMuted }}> · 点击关闭</span>
             </Show>
           </text>
         </Show>

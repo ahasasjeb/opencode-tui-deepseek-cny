@@ -27,7 +27,7 @@ export function UpdateBanner(props: {
   theme: Theme
   version: string
   activated: boolean
-  onDismiss: () => void
+  onDismiss?: () => void
 }) {
   return (
     <text fg={props.activated ? props.theme.warning : props.theme.textMuted} wrapMode="word" onMouseDown={props.onDismiss}>

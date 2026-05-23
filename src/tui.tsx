@@ -202,14 +202,14 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           canRefresh={activated() && activeProviders().some((item) => tokens()[item.id] !== undefined)}
           onRefresh={refreshActive}
         />
-        <Show when={updateVersion() !== null && !updateBannerDismissed()}>
+        <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
           <Show when={updateVersion()}>
             {(version) => (
             <UpdateBanner
               theme={props.api.theme.current}
               version={version()}
               activated={activated()}
-              onDismiss={dismissUpdateBanner}
+              onDismiss={activated() ? dismissUpdateBanner : undefined}
             />
             )}
           </Show>

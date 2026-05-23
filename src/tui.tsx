@@ -112,6 +112,13 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   )
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
+  const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)
+  let updateBannerTimer: ReturnType<typeof setTimeout> | undefined
+
+  const dismissUpdateBanner = () => {
+    clearTimeout(updateBannerTimer)
+    setUpdateBannerDismissed(true)
+  }
 
   const controllers = new Map<TrackedProviderID, AbortController>()
   let previousTokenSignature = tokenSignature(tokens())
@@ -205,6 +212,15 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     refreshActive()
   })
 
+  createEffect(() => {
+    if (!activated() || !updateVersion() || updateBannerDismissed()) return
+    clearTimeout(updateBannerTimer)
+    updateBannerTimer = setTimeout(() => {
+      setUpdateBannerDismissed(true)
+    }, 7000)
+    onCleanup(() => clearTimeout(updateBannerTimer))
+  })
+
   onMount(() => {
     const interval = setInterval(() => {
       if (activated()) refreshActive()
@@ -230,6 +246,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
 
   onCleanup(() => {
+    clearTimeout(updateBannerTimer)
     for (const controller of controllers.values()) {
       controller.abort()
     }
@@ -252,7 +269,15 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           canRefresh={activated() && activeProviders().some((item) => tokens()[item.id] !== undefined)}
           onRefresh={refreshActive}
         />
-        <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} updateVersion={updateVersion()} />}>
+        <Show when={updateVersion() && !updateBannerDismissed()}>
+          <text fg={activated() ? theme().warning : theme().textMuted} wrapMode="word" onMouseDown={dismissUpdateBanner}>
+            有新版本 {updateVersion()}，运行 <b>opencode plugin update {PLUGIN_NAME}</b> 更新
+            <Show when={activated()}>
+              <text fg={theme().textMuted}> · 点击关闭</text>
+            </Show>
+          </text>
+        </Show>
+        <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} />}>
           <Show when={summary().turns > 0} fallback={<EmptyUsage theme={props.api.theme.current} />}>
             <Summary theme={props.api.theme.current} summary={summary()} title={session()?.title} />
           </Show>
@@ -313,17 +338,12 @@ function Summary(props: { theme: TuiPluginApi["theme"]["current"]; summary: Sess
   )
 }
 
-function ActivationPrompt(props: { theme: TuiPluginApi["theme"]["current"]; updateVersion?: string | null }) {
+function ActivationPrompt(props: { theme: TuiPluginApi["theme"]["current"] }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
         使用 DeepSeek 或 moonshot China 模型返回一次消息后激活
       </text>
-      <Show when={props.updateVersion}>
-        <text fg={props.theme.warning} wrapMode="word">
-          有新版本 {props.updateVersion}，运行 <b>opencode plugin update {PLUGIN_NAME}</b> 更新
-        </text>
-      </Show>
     </box>
   )
 }

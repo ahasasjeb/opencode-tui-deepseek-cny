@@ -11,6 +11,7 @@ import {
   type SessionCostSummary,
   type TrackedProviderID,
 } from "./pricing.js"
+import { PLUGIN_NAME, PLUGIN_VERSION } from "./version.js"
 
 type Options = {
   balanceRefreshMs: number
@@ -37,6 +38,7 @@ type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 const pluginID = "opencode-tui-deepseek-cny"
 const defaultBalanceRefreshMs = 600_000
 const orange = RGBA.fromInts(255, 135, 0)
+let versionCheckDone = false
 
 const money = new Intl.NumberFormat("zh-CN", {
   style: "currency",
@@ -109,6 +111,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     ),
   )
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
+  const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
 
   const controllers = new Map<TrackedProviderID, AbortController>()
   let previousTokenSignature = tokenSignature(tokens())
@@ -207,6 +210,23 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
       if (activated()) refreshActive()
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(interval))
+
+    if (!versionCheckDone) {
+      versionCheckDone = true
+      void (async () => {
+        try {
+          const res = await fetch(`https://registry.npmjs.org/${PLUGIN_NAME}`)
+          if (!res.ok) return
+          const data = (await res.json()) as { ["dist-tags"]?: { latest?: string } }
+          const latest = data["dist-tags"]?.latest
+          if (latest && latest !== PLUGIN_VERSION) {
+            setUpdateVersion(latest)
+          }
+        } catch {
+          // silently ignore network errors
+        }
+      })()
+    }
   })
 
   onCleanup(() => {
@@ -232,7 +252,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           canRefresh={activated() && activeProviders().some((item) => tokens()[item.id] !== undefined)}
           onRefresh={refreshActive}
         />
-        <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} />}>
+        <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} updateVersion={updateVersion()} />}>
           <Show when={summary().turns > 0} fallback={<EmptyUsage theme={props.api.theme.current} />}>
             <Summary theme={props.api.theme.current} summary={summary()} title={session()?.title} />
           </Show>
@@ -293,12 +313,17 @@ function Summary(props: { theme: TuiPluginApi["theme"]["current"]; summary: Sess
   )
 }
 
-function ActivationPrompt(props: { theme: TuiPluginApi["theme"]["current"] }) {
+function ActivationPrompt(props: { theme: TuiPluginApi["theme"]["current"]; updateVersion?: string | null }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
         使用 DeepSeek 或 moonshot China 模型返回一次消息后激活
       </text>
+      <Show when={props.updateVersion}>
+        <text fg={props.theme.warning} wrapMode="word">
+          有新版本 {props.updateVersion}，运行 <b>opencode plugin update {PLUGIN_NAME}</b> 更新
+        </text>
+      </Show>
     </box>
   )
 }

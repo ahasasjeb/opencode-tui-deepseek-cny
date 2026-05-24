@@ -15,8 +15,7 @@ export function providerTokens(api: TuiPluginApi) {
 export function activeTrackedProviders(messages: ReadonlyArray<Message>) {
   const ids = new Set<TrackedProviderID>()
   for (const item of messages) {
-    if (item.role !== "assistant") continue
-    const model = trackedModel(item.providerID, item.modelID)
+    const model = completedTrackedModel(item)
     if (model) ids.add(model.providerID)
   }
   return TRACKED_PROVIDERS.filter((item) => ids.has(item.id))
@@ -26,8 +25,7 @@ export function completedTrackedReplyKey(messages: ReadonlyArray<Message>) {
   return messages
     .flatMap((item) => {
       if (item.role !== "assistant") return []
-      if (!trackedModel(item.providerID, item.modelID)) return []
-      if (!("completed" in item.time) || item.time.completed === undefined) return []
+      if (!completedTrackedModel(item)) return []
       return [`${item.id}:${item.time.completed}`]
     })
     .join("|")
@@ -119,4 +117,10 @@ function taskChildSessionID(part: Part) {
 function readString(value: unknown, key: string) {
   if (!isRecord(value)) return undefined
   return typeof value[key] === "string" ? value[key] : undefined
+}
+
+function completedTrackedModel(message: Message) {
+  if (message.role !== "assistant") return undefined
+  if (!("completed" in message.time) || message.time.completed === undefined) return undefined
+  return trackedModel(message.providerID, message.modelID)
 }

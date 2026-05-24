@@ -1,8 +1,6 @@
-export const DEEPSEEK_MODELS = ["deepseek-v4-flash", "deepseek-v4-pro"] as const
-export type DeepseekModelID = (typeof DEEPSEEK_MODELS)[number]
+export type DeepseekModelID = "deepseek-v4-flash" | "deepseek-v4-pro"
 
-export const KIMI_CHINA_MODELS = ["kimi-k2.5", "kimi-k2.6"] as const
-export type KimiChinaModelID = (typeof KIMI_CHINA_MODELS)[number]
+export type KimiChinaModelID = "kimi-k2.5" | "kimi-k2.6"
 
 export const TRACKED_PROVIDERS = [
   {
@@ -137,10 +135,6 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     priceFor: () => kimiK26Price,
   },
 ]
-
-export function trackedProvider(value: string) {
-  return TRACKED_PROVIDERS.find((item) => item.id === value)
-}
 
 export function trackedModel(providerID: string, modelID: string) {
   return MODEL_PRICES.find((item) => item.providerID === providerID && item.modelID === modelID)

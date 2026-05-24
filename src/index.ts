@@ -1,12 +1,9 @@
 export {
-  DEEPSEEK_MODELS,
-  KIMI_CHINA_MODELS,
   TRACKED_PROVIDERS,
   calculateDeepseekSession,
   calculateTrackedSession,
   priceForModel,
   trackedModel,
-  trackedProvider,
   type DeepseekModelID,
   type KimiChinaModelID,
   type ModelSubtotal,

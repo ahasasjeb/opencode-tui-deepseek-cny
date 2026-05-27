@@ -5,17 +5,17 @@ import { TRACKED_PROVIDERS, type TrackedProviderID } from "../pricing.js"
 
 export type BalanceState =
   | {
-      status: "idle" | "loading" | "missing"
-    }
+    status: "idle" | "loading" | "missing"
+  }
   | {
-      status: "ready"
-      balance: DisplayBalance
-      updatedAt: number
-    }
+    status: "ready"
+    balance: DisplayBalance
+    updatedAt: number
+  }
   | {
-      status: "error"
-      message: string
-    }
+    status: "error"
+    message: string
+  }
 
 export type BalanceStateMap = Partial<Record<TrackedProviderID, BalanceState>>
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]

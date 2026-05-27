@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { homedir } from "node:os"
+import { dirname, join } from "node:path"
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const TOKEN_URL = "https://auth.openai.com/oauth/token"
@@ -30,6 +31,19 @@ type OAuthCredential = {
 }
 
 type AuthFile = Record<string, { type: string; access?: string; refresh?: string; expires?: number; accountId?: string }>
+type AccountFile = {
+  version?: number
+  accounts?: Record<
+    string,
+    {
+      id?: string
+      serviceID?: string
+      credential?: { type?: string; access?: string; refresh?: string; expires?: number; accountId?: string }
+    }
+  >
+  active?: Record<string, string>
+}
+type AccountEntry = NonNullable<AccountFile["accounts"]>[string]
 
 function parseWindowLimit(obj: unknown): WindowLimit | null {
   if (!obj || typeof obj !== "object") return null
@@ -42,21 +56,19 @@ function parseWindowLimit(obj: unknown): WindowLimit | null {
 }
 
 export async function readCodexOAuth(stateDir: string): Promise<OAuthCredential | null> {
-  try {
-    const raw = await readFile(join(stateDir, "auth.json"), "utf-8")
-    const data = JSON.parse(raw) as AuthFile
-    const entry = data.openai
-    if (!entry || entry.type !== "oauth" || !entry.access || !entry.refresh) return null
-    return {
-      type: "oauth",
-      access: entry.access,
-      refresh: entry.refresh,
-      expires: typeof entry.expires === "number" ? entry.expires : 0,
-      accountId: entry.accountId,
+  const fromEnv = parseCredential(JSON.parse(process.env.OPENCODE_AUTH_CONTENT ?? "null"))
+  if (fromEnv) return fromEnv
+
+  for (const filePath of authCandidatePaths(stateDir)) {
+    try {
+      const parsed = parseCredential(JSON.parse(await readFile(filePath, "utf-8")))
+      if (parsed) return parsed
+    } catch {
+      continue
     }
-  } catch {
-    return null
   }
+
+  return null
 }
 
 async function refreshToken(refreshToken: string): Promise<{ access: string; refresh: string; expires: number; accountId?: string } | null> {
@@ -83,20 +95,119 @@ async function refreshToken(refreshToken: string): Promise<{ access: string; ref
 }
 
 async function saveRefreshedToken(stateDir: string, cred: OAuthCredential): Promise<void> {
-  try {
-    const filePath = join(stateDir, "auth.json")
-    const raw = await readFile(filePath, "utf-8")
-    const data = JSON.parse(raw) as AuthFile
-    if (data.openai && data.openai.type === "oauth") {
-      data.openai.access = cred.access
-      data.openai.refresh = cred.refresh
-      data.openai.expires = cred.expires
-      if (cred.accountId) data.openai.accountId = cred.accountId
-      await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8")
+  for (const filePath of authCandidatePaths(stateDir)) {
+    try {
+      const raw = await readFile(filePath, "utf-8")
+      const next = updateStoredCredential(JSON.parse(raw), cred)
+      if (!next) continue
+      await writeFile(filePath, JSON.stringify(next, null, 2), "utf-8")
+      return
+    } catch {
+      continue
     }
-  } catch {
-    // silently ignore
   }
+}
+
+function authCandidatePaths(stateDir: string) {
+  const candidates = new Set<string>([join(stateDir, "account.json")])
+  const stateParent = dirname(stateDir)
+  candidates.add(join(stateParent, "opencode", "account.json"))
+
+  for (const base of [
+    process.env.XDG_DATA_HOME,
+    process.env.LOCALAPPDATA,
+    process.env.APPDATA,
+    join(homedir(), ".local", "share"),
+    join(homedir(), "Library", "Application Support"),
+  ]) {
+    if (!base) continue
+    candidates.add(join(base, "opencode", "account.json"))
+    candidates.add(join(base, "opencode", "auth.json"))
+  }
+
+  return [...candidates]
+}
+
+function parseCredential(value: unknown): OAuthCredential | null {
+  return parseLegacyCredential(value) ?? parseAccountCredential(value)
+}
+
+function parseLegacyCredential(value: unknown): OAuthCredential | null {
+  if (!value || typeof value !== "object") return null
+  const entry = (value as AuthFile).openai
+  if (!entry || entry.type !== "oauth" || !entry.access || !entry.refresh) return null
+  return {
+    type: "oauth",
+    access: entry.access,
+    refresh: entry.refresh,
+    expires: typeof entry.expires === "number" ? entry.expires : 0,
+    accountId: entry.accountId,
+  }
+}
+
+function parseAccountCredential(value: unknown): OAuthCredential | null {
+  if (!value || typeof value !== "object") return null
+  const data = value as AccountFile
+  const activeID = data.active?.openai
+  if (activeID) {
+    const active = parseAccountEntry(data.accounts?.[activeID])
+    if (active) return active
+  }
+
+  for (const entry of Object.values(data.accounts ?? {})) {
+    if (entry?.serviceID !== "openai") continue
+    const parsed = parseAccountEntry(entry)
+    if (parsed) return parsed
+  }
+
+  return null
+}
+
+function parseAccountEntry(entry: AccountEntry | undefined): OAuthCredential | null {
+  const credential = entry?.credential
+  if (!credential || credential.type !== "oauth" || !credential.access || !credential.refresh) return null
+  return {
+    type: "oauth",
+    access: credential.access,
+    refresh: credential.refresh,
+    expires: typeof credential.expires === "number" ? credential.expires : 0,
+    accountId: credential.accountId,
+  }
+}
+
+function updateStoredCredential(value: unknown, cred: OAuthCredential) {
+  if (!value || typeof value !== "object") return null
+
+  const legacy = value as AuthFile
+  if (legacy.openai?.type === "oauth") {
+    legacy.openai.access = cred.access
+    legacy.openai.refresh = cred.refresh
+    legacy.openai.expires = cred.expires
+    if (cred.accountId) legacy.openai.accountId = cred.accountId
+    return legacy
+  }
+
+  const data = value as AccountFile
+  const activeID = data.active?.openai
+  if (activeID && data.accounts?.[activeID]?.credential?.type === "oauth") {
+    data.accounts[activeID]!.credential!.access = cred.access
+    data.accounts[activeID]!.credential!.refresh = cred.refresh
+    data.accounts[activeID]!.credential!.expires = cred.expires
+    if (cred.accountId) data.accounts[activeID]!.credential!.accountId = cred.accountId
+    return data
+  }
+
+  for (const entry of Object.values(data.accounts ?? {})) {
+    if (entry?.serviceID !== "openai") continue
+    if (entry.credential?.type !== "oauth") continue
+    entry.credential.access = cred.access
+    entry.credential.refresh = cred.refresh
+    entry.credential.expires = cred.expires
+    if (cred.accountId) entry.credential.accountId = cred.accountId
+    return data
+  }
+
+  return null
 }
 
 async function fetchUsageRaw(accessToken: string, accountId?: string): Promise<Response> {

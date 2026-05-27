@@ -76,10 +76,10 @@ function LimitRow(props: { limit: WindowLimit; theme: Theme }) {
 export function CodexUsagePanel(props: {
   theme: Theme
   state:
-    | { status: "idle" | "loading" }
-    | { status: "ready"; usage: CodexUsage }
-    | { status: "error"; message: string }
-    | { status: "no-auth" }
+  | { status: "idle" | "loading" }
+  | { status: "ready"; usage: CodexUsage }
+  | { status: "error"; message: string }
+  | { status: "no-auth" }
 }) {
   const planLabel = (): string => {
     if (props.state.status !== "ready") return ""

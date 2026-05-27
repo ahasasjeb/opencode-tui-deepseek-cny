@@ -256,12 +256,12 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
         <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
           <Show when={updateVersion()}>
             {(version) => (
-            <UpdateBanner
-              theme={props.api.theme.current}
-              version={version()}
-              activated={activated()}
-              onDismiss={activated() ? dismissUpdateBanner : undefined}
-            />
+              <UpdateBanner
+                theme={props.api.theme.current}
+                version={version()}
+                activated={activated()}
+                onDismiss={activated() ? dismissUpdateBanner : undefined}
+              />
             )}
           </Show>
         </Show>

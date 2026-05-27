@@ -187,10 +187,10 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
           reasoningTokens: sum.reasoningTokens + safe(item.tokens.reasoning),
           costCny: roundMoney(
             sum.costCny +
-              (cacheHitInputTokens * price.cacheHitInput +
-                cacheMissInputTokens * price.cacheMissInput +
-                outputTokens * price.output) /
-                1_000_000,
+            (cacheHitInputTokens * price.cacheHitInput +
+              cacheMissInputTokens * price.cacheMissInput +
+              outputTokens * price.output) /
+            1_000_000,
           ),
           discountedTurns: sum.discountedTurns + (price.discounted ? 1 : 0),
         }

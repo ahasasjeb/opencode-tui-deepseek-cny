@@ -114,9 +114,8 @@ export function ProviderBalance(props: {
             <MetricRow
               theme={props.theme}
               label={props.state.status === "ready" && props.state.balance.isAvailable ? "可用" : "不可用"}
-              value={`${props.state.status === "ready" ? props.state.balance.currency : "CNY"} ${
-                props.state.status === "ready" ? props.state.balance.totalBalance : "0"
-              }`}
+              value={`${props.state.status === "ready" ? props.state.balance.currency : "CNY"} ${props.state.status === "ready" ? props.state.balance.totalBalance : "0"
+                }`}
               color={tone()}
               strong
             />

@@ -14,13 +14,13 @@ export type DeepseekBalance = {
 
 export type BalanceResult =
   | {
-      ok: true
-      balance: DeepseekBalance
-    }
+    ok: true
+    balance: DeepseekBalance
+  }
   | {
-      ok: false
-      message: string
-    }
+    ok: false
+    message: string
+  }
 
 export async function fetchDeepseekBalance(token: string, signal?: AbortSignal): Promise<BalanceResult> {
   return fetch("https://api.deepseek.com/user/balance", {
@@ -51,13 +51,13 @@ export type MoonshotBalance = {
 
 export type MoonshotBalanceResult =
   | {
-      ok: true
-      balance: MoonshotBalance
-    }
+    ok: true
+    balance: MoonshotBalance
+  }
   | {
-      ok: false
-      message: string
-    }
+    ok: false
+    message: string
+  }
 
 export type DisplayBalance = {
   isAvailable: boolean
@@ -72,13 +72,13 @@ export type DisplayBalance = {
 
 export type DisplayBalanceResult =
   | {
-      ok: true
-      balance: DisplayBalance
-    }
+    ok: true
+    balance: DisplayBalance
+  }
   | {
-      ok: false
-      message: string
-    }
+    ok: false
+    message: string
+  }
 
 export async function fetchMoonshotBalance(token: string, signal?: AbortSignal): Promise<MoonshotBalanceResult> {
   return fetch("https://api.moonshot.cn/v1/users/me/balance", {
@@ -186,15 +186,15 @@ function normalizeDeepseekBalance(balance: DeepseekBalance): DisplayBalance {
     amount: numberFromBalance(item?.totalBalance),
     details: item
       ? [
-          {
-            label: "赠",
-            value: item.grantedBalance,
-          },
-          {
-            label: "充",
-            value: item.toppedUpBalance,
-          },
-        ]
+        {
+          label: "赠",
+          value: item.grantedBalance,
+        },
+        {
+          label: "充",
+          value: item.toppedUpBalance,
+        },
+      ]
       : [],
   }
 }

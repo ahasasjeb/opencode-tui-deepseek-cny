@@ -3,6 +3,7 @@ import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plug
 import type { Message } from "@opencode-ai/sdk/v2"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { fetchDisplayBalance } from "./balance.js"
+import { fetchCodexUsage, type CodexUsage } from "./codex-usage.js"
 import { calculateTrackedSession, TRACKED_PROVIDERS, type TrackedProviderID } from "./pricing.js"
 import {
   ActivationPrompt,
@@ -13,6 +14,7 @@ import {
   Summary,
   UpdateBanner,
 } from "./tui/components.js"
+import { CodexUsagePanel } from "./tui/codex-components.js"
 import { errorMessage } from "./tui/format.js"
 import { parseOptions, type Options } from "./tui/options.js"
 import {
@@ -27,6 +29,12 @@ import {
 } from "./tui/session.js"
 import { tokenSignature, type BalanceState, type BalanceStateMap } from "./tui/state.js"
 import { PLUGIN_NAME, PLUGIN_VERSION } from "./version.js"
+
+type CodexState =
+  | { status: "idle" | "loading" }
+  | { status: "ready"; usage: CodexUsage }
+  | { status: "error"; message: string }
+  | { status: "no-auth" }
 
 const pluginID = "opencode-tui-deepseek-cny"
 let versionCheckDone = false
@@ -58,6 +66,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
   const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)
+  const [codexState, setCodexState] = createSignal<CodexState>({ status: "idle" })
   let updateBannerTimer: ReturnType<typeof setTimeout> | undefined
 
   const dismissUpdateBanner = () => {
@@ -136,6 +145,40 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }
   }
 
+  const isOpenAIOAuth = (): boolean => {
+    const openai = props.api.state.provider.find((item) => item.id === "openai")
+    if (!openai) return false
+    // If source is "env" or has a direct key, it's API key mode, not OAuth
+    if (openai.source === "env" && openai.key) return false
+    // If the key looks like a real API key (sk-...), it's not OAuth
+    if (openai.key && openai.key.startsWith("sk-")) return false
+    // Check if auth.json has openai oauth entry
+    return true
+  }
+
+  let codexRequest = 0
+  const refreshCodexUsage = async () => {
+    if (!isOpenAIOAuth()) {
+      setCodexState({ status: "no-auth" })
+      return
+    }
+    const request = ++codexRequest
+    setCodexState((prev) => (prev.status === "ready" ? prev : { status: "loading" }))
+    try {
+      const stateDir = props.api.state.path.state
+      const result = await fetchCodexUsage(stateDir)
+      if (request !== codexRequest) return
+      if (result.ok) {
+        setCodexState({ status: "ready", usage: result.usage })
+      } else {
+        setCodexState({ status: "error", message: result.message })
+      }
+    } catch (cause) {
+      if (request !== codexRequest) return
+      setCodexState({ status: "error", message: errorMessage(cause) })
+    }
+  }
+
   createEffect(() => {
     const current = tokenSignature(tokens())
     if (current === previousTokenSignature) return
@@ -172,6 +215,11 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(interval))
 
+    const codexInterval = setInterval(refreshCodexUsage, props.options.balanceRefreshMs)
+    onCleanup(() => clearInterval(codexInterval))
+
+    void refreshCodexUsage()
+
     if (!versionCheckDone) {
       versionCheckDone = true
       void checkLatestVersion(setUpdateVersion)
@@ -200,8 +248,13 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
         <Header
           theme={props.api.theme.current}
           canRefresh={activated() && activeProviders().some((item) => tokens()[item.id] !== undefined)}
-          onRefresh={refreshActive}
+          onRefresh={() => {
+            refreshActive()
+            void refreshCodexUsage()
+          }}
         />
+        <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
+        <Divider theme={props.api.theme.current} />
         <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
           <Show when={updateVersion()}>
             {(version) => (

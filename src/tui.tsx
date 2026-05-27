@@ -209,16 +209,21 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     onCleanup(() => clearTimeout(updateBannerTimer))
   })
 
+  createEffect(() => {
+    if (!activated()) return
+    refreshCodexUsage()
+  })
+
   onMount(() => {
     const interval = setInterval(() => {
       if (activated()) refreshActive()
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(interval))
 
-    const codexInterval = setInterval(refreshCodexUsage, props.options.balanceRefreshMs)
+    const codexInterval = setInterval(() => {
+      if (activated()) refreshCodexUsage()
+    }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(codexInterval))
-
-    void refreshCodexUsage()
 
     if (!versionCheckDone) {
       versionCheckDone = true
@@ -253,8 +258,6 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
             void refreshCodexUsage()
           }}
         />
-        <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
-        <Divider theme={props.api.theme.current} />
         <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
           <Show when={updateVersion()}>
             {(version) => (
@@ -271,6 +274,8 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           <Show when={summary().turns > 0} fallback={<EmptyUsage theme={props.api.theme.current} />}>
             <Summary theme={props.api.theme.current} summary={summary()} title={session()?.title} />
           </Show>
+          <Divider theme={props.api.theme.current} />
+          <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
           <Divider theme={props.api.theme.current} />
           <For each={activeProviders()}>
             {(provider) => (

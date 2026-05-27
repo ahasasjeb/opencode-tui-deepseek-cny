@@ -21,6 +21,16 @@ export function activeTrackedProviders(messages: ReadonlyArray<Message>) {
   return TRACKED_PROVIDERS.filter((item) => ids.has(item.id))
 }
 
+export function hasOpenAIOAuthProvider(
+  providers: ReadonlyArray<{ id: string; source?: string; key?: string | null | undefined }>,
+) {
+  const openai = providers.find((item) => item.id === "openai")
+  if (!openai) return false
+  if (openai.source === "env" && openai.key) return false
+  if (openai.key?.startsWith("sk-")) return false
+  return true
+}
+
 export function completedTrackedReplyKey(messages: ReadonlyArray<Message>) {
   return messages
     .flatMap((item) => {

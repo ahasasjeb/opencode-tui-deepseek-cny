@@ -1,6 +1,6 @@
 import type { Message } from "@opencode-ai/sdk/v2"
 import { expect, test } from "bun:test"
-import { activeTrackedProviders } from "../src/tui/session.js"
+import { activeTrackedProviders, hasOpenAIOAuthProvider } from "../src/tui/session.js"
 
 function assistantMessage(input: {
   providerID: string
@@ -37,4 +37,25 @@ test("完成后的受支持回复会激活 provider", () => {
   ])
 
   expect(providers.map((item) => item.id)).toEqual(["deepseek"])
+})
+
+test("OpenAI OAuth provider 会激活 Codex 面板", () => {
+  expect(
+    hasOpenAIOAuthProvider([
+      {
+        id: "openai",
+      },
+    ]),
+  ).toBe(true)
+})
+
+test("OpenAI API Key 模式不会激活 Codex 面板", () => {
+  expect(
+    hasOpenAIOAuthProvider([
+      {
+        id: "openai",
+        key: "sk-test",
+      },
+    ]),
+  ).toBe(false)
 })

@@ -21,6 +21,7 @@ import {
   activeTrackedProviders,
   childUsageRefreshKey,
   completedTrackedReplyKey,
+  hasOpenAIOAuthProvider,
   isSubagentSession,
   mergeMessages,
   providerTokens,
@@ -52,7 +53,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const usageMessages = createMemo(() => mergeMessages(messages(), localChildMessages(), remoteChildMessages()))
   const tokens = createMemo(() => providerTokens(props.api))
   const activeProviders = createMemo(() => activeTrackedProviders(usageMessages()))
-  const activated = createMemo(() => activeProviders().length > 0)
+  const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
+  const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider))
+  const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(usageMessages()))
   const childRefreshKey = createMemo(() =>
     childUsageRefreshKey({
@@ -145,20 +148,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }
   }
 
-  const isOpenAIOAuth = (): boolean => {
-    const openai = props.api.state.provider.find((item) => item.id === "openai")
-    if (!openai) return false
-    // If source is "env" or has a direct key, it's API key mode, not OAuth
-    if (openai.source === "env" && openai.key) return false
-    // If the key looks like a real API key (sk-...), it's not OAuth
-    if (openai.key && openai.key.startsWith("sk-")) return false
-    // Check if auth.json has openai oauth entry
-    return true
-  }
-
   let codexRequest = 0
   const refreshCodexUsage = async () => {
-    if (!isOpenAIOAuth()) {
+    if (!codexEnabled()) {
       setCodexState({ status: "no-auth" })
       return
     }
@@ -210,7 +202,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
 
   createEffect(() => {
-    if (!activated()) return
+    if (!codexEnabled()) return
     refreshCodexUsage()
   })
 
@@ -221,7 +213,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     onCleanup(() => clearInterval(interval))
 
     const codexInterval = setInterval(() => {
-      if (activated()) refreshCodexUsage()
+      if (codexEnabled()) refreshCodexUsage()
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(codexInterval))
 
@@ -252,7 +244,10 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
       >
         <Header
           theme={props.api.theme.current}
-          canRefresh={activated() && activeProviders().some((item) => tokens()[item.id] !== undefined)}
+          canRefresh={
+            (hasTrackedUsage() && activeProviders().some((item) => tokens()[item.id] !== undefined)) ||
+            codexEnabled()
+          }
           onRefresh={() => {
             refreshActive()
             void refreshCodexUsage()
@@ -271,12 +266,18 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           </Show>
         </Show>
         <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} />}>
-          <Show when={summary().turns > 0} fallback={<EmptyUsage theme={props.api.theme.current} />}>
-            <Summary theme={props.api.theme.current} summary={summary()} title={session()?.title} />
+          <Show when={hasTrackedUsage()}>
+            <Show when={summary().turns > 0} fallback={<EmptyUsage theme={props.api.theme.current} />}>
+              <Summary theme={props.api.theme.current} summary={summary()} title={session()?.title} />
+            </Show>
+            <Divider theme={props.api.theme.current} />
           </Show>
-          <Divider theme={props.api.theme.current} />
-          <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
-          <Divider theme={props.api.theme.current} />
+          <Show when={codexEnabled()}>
+            <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
+            <Show when={hasTrackedUsage()}>
+              <Divider theme={props.api.theme.current} />
+            </Show>
+          </Show>
           <For each={activeProviders()}>
             {(provider) => (
               <ProviderBalance

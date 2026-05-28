@@ -1,7 +1,7 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import { RGBA } from "@opentui/core"
 import type { DisplayBalance } from "../balance.js"
-import { TRACKED_PROVIDERS, type TrackedProviderID } from "../pricing.js"
+import { BALANCE_TRACKED_PROVIDERS, TRACKED_PROVIDERS, type BalanceProviderID } from "../pricing.js"
 
 export type BalanceState =
   | {
@@ -17,7 +17,7 @@ export type BalanceState =
     message: string
   }
 
-export type BalanceStateMap = Partial<Record<TrackedProviderID, BalanceState>>
+export type BalanceStateMap = Partial<Record<BalanceProviderID, BalanceState>>
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 
 const orange = RGBA.fromInts(255, 135, 0)
@@ -30,6 +30,6 @@ export function balanceTone(theme: TuiPluginApi["theme"]["current"], amount: num
   return theme.success
 }
 
-export function tokenSignature(tokens: Partial<Record<TrackedProviderID, string>>) {
-  return TRACKED_PROVIDERS.map((provider) => `${provider.id}:${tokens[provider.id] ?? ""}`).join("|")
+export function tokenSignature(tokens: Partial<Record<BalanceProviderID, string>>) {
+  return BALANCE_TRACKED_PROVIDERS.map((provider) => `${provider.id}:${tokens[provider.id] ?? ""}`).join("|")
 }

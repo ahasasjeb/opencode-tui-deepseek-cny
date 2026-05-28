@@ -1,4 +1,4 @@
-import type { TrackedProviderID } from "./pricing.js"
+import type { BalanceProviderID } from "./pricing.js"
 
 export type BalanceInfo = {
   currency: string
@@ -101,7 +101,7 @@ export async function fetchMoonshotBalance(token: string, signal?: AbortSignal):
 }
 
 export async function fetchDisplayBalance(
-  providerID: TrackedProviderID,
+  providerID: BalanceProviderID,
   token: string,
   signal?: AbortSignal,
 ): Promise<DisplayBalanceResult> {

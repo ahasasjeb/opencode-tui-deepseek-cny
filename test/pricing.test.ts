@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { calculateDeepseekSession, calculateTrackedSession, priceForModel } from "../src/pricing.js"
+import { BALANCE_TRACKED_PROVIDERS, calculateDeepseekSession, calculateTrackedSession, priceForModel } from "../src/pricing.js"
 
 test("按 DeepSeek V4 Flash 人民币价格统计", () => {
   const summary = calculateDeepseekSession([
@@ -107,4 +107,54 @@ test("按 Kimi China K2.5 和 K2.6 人民币价格统计", () => {
 
   expect(summary.costCny).toBe(60.3)
   expect(summary.models.map((item) => item.modelID)).toEqual(["kimi-k2.5", "kimi-k2.6"])
+})
+
+test("按 Xiaomi MiMo 人民币价格统计且不参与余额查询", () => {
+  expect(priceForModel("mimo-v2.5")).toEqual({
+    cacheHitInput: 0.02,
+    cacheMissInput: 1,
+    output: 2,
+    discounted: false,
+  })
+  expect(priceForModel("mimo-v2.5-pro")).toEqual({
+    cacheHitInput: 0.025,
+    cacheMissInput: 3,
+    output: 6,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession([
+    {
+      providerID: "xiaomi",
+      modelID: "mimo-v2.5",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "xiaomi",
+      modelID: "mimo-v2.5-pro",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(12.045)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["mimo-v2.5", "mimo-v2.5-pro"])
+  expect(summary.models[0]?.providerLabel).toBe("Xiaomi MiMo")
 })

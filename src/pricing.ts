@@ -2,21 +2,41 @@ export type DeepseekModelID = "deepseek-v4-flash" | "deepseek-v4-pro"
 
 export type KimiChinaModelID = "kimi-k2.5" | "kimi-k2.6"
 
+export type XiaomiMiMoModelID = "mimo-v2.5" | "mimo-v2.5-pro"
+
+type TrackedProviderEntry = {
+  id: string
+  label: string
+  env: readonly string[]
+  balance: boolean
+}
+
 export const TRACKED_PROVIDERS = [
   {
     id: "deepseek",
     label: "DeepSeek",
     env: ["DEEPSEEK_API_KEY"],
+    balance: true,
   },
   {
     id: "moonshotai-cn",
     label: "moonshot China",
     env: ["MOONSHOT_API_KEY"],
+    balance: true,
   },
-] as const
+  {
+    id: "xiaomi",
+    label: "Xiaomi MiMo",
+    env: [],
+    balance: false,
+  },
+] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
-export type TrackedModelID = DeepseekModelID | KimiChinaModelID
+export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID
+export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
+export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
+export type BalanceProviderID = BalanceTrackedProvider["id"]
 
 type Price = {
   cacheHitInput: number
@@ -105,6 +125,20 @@ const kimiK26Price: Price = {
   discounted: false,
 }
 
+const mimoV25Price: Price = {
+  cacheHitInput: 0.02,
+  cacheMissInput: 1,
+  output: 2,
+  discounted: false,
+}
+
+const mimoV25ProPrice: Price = {
+  cacheHitInput: 0.025,
+  cacheMissInput: 3,
+  output: 6,
+  discounted: false,
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -134,6 +168,20 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "K2.6",
     priceFor: () => kimiK26Price,
   },
+  {
+    providerID: "xiaomi",
+    providerLabel: "Xiaomi MiMo",
+    modelID: "mimo-v2.5",
+    modelLabel: "V2.5",
+    priceFor: () => mimoV25Price,
+  },
+  {
+    providerID: "xiaomi",
+    providerLabel: "Xiaomi MiMo",
+    modelID: "mimo-v2.5-pro",
+    modelLabel: "V2.5 Pro",
+    priceFor: () => mimoV25ProPrice,
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
@@ -144,8 +192,16 @@ export function priceForModel(modelID: TrackedModelID, time = Date.now()): Price
   if (modelID === "deepseek-v4-flash") return flashPrice
   if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time)
   if (modelID === "kimi-k2.5") return kimiK25Price
-  return kimiK26Price
+  if (modelID === "kimi-k2.6") return kimiK26Price
+  if (modelID === "mimo-v2.5") return mimoV25Price
+  return mimoV25ProPrice
 }
+
+export function supportsBalance(provider: TrackedProvider): provider is BalanceTrackedProvider {
+  return provider.balance
+}
+
+export const BALANCE_TRACKED_PROVIDERS = TRACKED_PROVIDERS.filter(supportsBalance)
 
 export function calculateTrackedSession(records: readonly UsageRecord[]): SessionCostSummary {
   const models = MODEL_PRICES.map((entry) => subtotal(entry, records)).filter((item) => item.turns > 0)

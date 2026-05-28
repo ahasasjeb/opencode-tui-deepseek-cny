@@ -1,10 +1,10 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { RGBA } from "@opentui/core"
 import { For, Match, Show, Switch } from "solid-js"
-import type { SessionCostSummary } from "../pricing.js"
+import type { BalanceTrackedProvider, SessionCostSummary } from "../pricing.js"
 import { PLUGIN_NAME } from "../version.js"
 import { formatDetails, formatMoney, formatTime, formatTokens } from "./format.js"
-import { balanceTone, type BalanceState, type TrackedProvider } from "./state.js"
+import { balanceTone, type BalanceState } from "./state.js"
 
 type Theme = TuiPluginApi["theme"]["current"]
 
@@ -69,7 +69,7 @@ export function ActivationPrompt(props: { theme: Theme }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
-        使用 DeepSeek 或 moonshot China 模型返回一次消息后激活
+        使用 DeepSeek、moonshot China 或 Xiaomi MiMo 模型返回一次消息后激活
       </text>
     </box>
   )
@@ -86,7 +86,7 @@ export function EmptyUsage(props: { theme: Theme }) {
 
 export function ProviderBalance(props: {
   theme: Theme
-  provider: TrackedProvider
+  provider: BalanceTrackedProvider
   state: BalanceState
 }) {
   const amount = () => (props.state.status === "ready" ? props.state.balance.amount : undefined)

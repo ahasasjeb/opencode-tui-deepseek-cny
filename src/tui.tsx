@@ -4,7 +4,7 @@ import type { Message } from "@opencode-ai/sdk/v2"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { fetchDisplayBalance } from "./balance.js"
 import { fetchCodexUsage, type CodexUsage } from "./codex-usage.js"
-import { calculateTrackedSession, TRACKED_PROVIDERS, type TrackedProviderID } from "./pricing.js"
+import { calculateTrackedSession, supportsBalance, type BalanceProviderID } from "./pricing.js"
 import {
   ActivationPrompt,
   Divider,
@@ -54,6 +54,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const usageMessages = createMemo(() => mergeMessages(messages(), localChildMessages(), remoteChildMessages()))
   const tokens = createMemo(() => providerTokens(props.api))
   const activeProviders = createMemo(() => activeTrackedProviders(usageMessages()))
+  const activeBalanceProviders = createMemo(() => activeProviders().filter(supportsBalance))
   const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
   const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
@@ -78,19 +79,19 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     setUpdateBannerDismissed(true)
   }
 
-  const controllers = new Map<TrackedProviderID, AbortController>()
+  const controllers = new Map<BalanceProviderID, AbortController>()
   let previousTokenSignature = tokenSignature(tokens())
   let previousCompletedTrackedReplies = ""
   let childUsageRequest = 0
 
-  const setProviderBalance = (providerID: TrackedProviderID, state: BalanceState) => {
+  const setProviderBalance = (providerID: BalanceProviderID, state: BalanceState) => {
     setBalances((current) => ({
       ...current,
       [providerID]: state,
     }))
   }
 
-  const refreshProvider = (providerID: TrackedProviderID, current = tokens()[providerID]) => {
+  const refreshProvider = (providerID: BalanceProviderID, current = tokens()[providerID]) => {
     controllers.get(providerID)?.abort()
     if (!current) {
       setProviderBalance(providerID, { status: "missing" })
@@ -144,7 +145,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   }
 
   const refreshActive = () => {
-    for (const provider of activeProviders()) {
+    for (const provider of activeBalanceProviders()) {
       refreshProvider(provider.id)
     }
   }
@@ -246,7 +247,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
         <Header
           theme={props.api.theme.current}
           canRefresh={
-            (hasTrackedUsage() && activeProviders().some((item) => tokens()[item.id] !== undefined)) ||
+            (hasTrackedUsage() && activeBalanceProviders().some((item) => tokens()[item.id] !== undefined)) ||
             codexEnabled()
           }
           onRefresh={() => {
@@ -279,7 +280,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
               <Divider theme={props.api.theme.current} />
             </Show>
           </Show>
-          <For each={activeProviders()}>
+          <For each={activeBalanceProviders()}>
             {(provider) => (
               <ProviderBalance
                 theme={props.api.theme.current}

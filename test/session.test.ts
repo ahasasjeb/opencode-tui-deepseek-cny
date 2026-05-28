@@ -39,6 +39,18 @@ test("完成后的受支持回复会激活 provider", () => {
   expect(providers.map((item) => item.id)).toEqual(["deepseek"])
 })
 
+test("完成后的 Xiaomi MiMo 回复会激活 provider", () => {
+  const providers = activeTrackedProviders([
+    assistantMessage({
+      providerID: "xiaomi",
+      modelID: "mimo-v2.5",
+      completed: 1,
+    }),
+  ])
+
+  expect(providers.map((item) => item.id)).toEqual(["xiaomi"])
+})
+
 test("OpenAI OAuth provider 会激活 Codex 面板", () => {
   expect(
     hasOpenAIOAuthProvider([

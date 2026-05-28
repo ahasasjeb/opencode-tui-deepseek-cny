@@ -160,7 +160,6 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   }
 
   const scheduleCodexRefresh = () => {
-    clearCodexRefreshTimer()
     if (disposed || !codexEnabled()) return
 
     codexRefreshTimer = setTimeout(() => {

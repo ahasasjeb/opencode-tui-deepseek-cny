@@ -1,3 +1,5 @@
+import { isRecord } from "../utils.js"
+
 export type Options = {
   balanceRefreshMs: number
   showWhenEmpty: boolean
@@ -20,8 +22,4 @@ export function parseOptions(value: unknown): Options {
         : defaultBalanceRefreshMs,
     showWhenEmpty: typeof value.showWhenEmpty === "boolean" ? value.showWhenEmpty : true,
   }
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
 }

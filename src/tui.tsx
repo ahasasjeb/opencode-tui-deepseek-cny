@@ -17,6 +17,7 @@ import {
 import { CodexUsagePanel } from "./tui/codex-components.js"
 import { errorMessage } from "./tui/format.js"
 import { parseOptions, type Options } from "./tui/options.js"
+import { randomCodexRefreshMs } from "./tui/refresh.js"
 import {
   activeTrackedProviders,
   childUsageRefreshKey,
@@ -83,6 +84,8 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   let previousTokenSignature = tokenSignature(tokens())
   let previousCompletedTrackedReplies = ""
   let childUsageRequest = 0
+  let codexRefreshTimer: ReturnType<typeof setTimeout> | undefined
+  let disposed = false
 
   const setProviderBalance = (providerID: BalanceProviderID, state: BalanceState) => {
     setBalances((current) => ({
@@ -151,7 +154,23 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   }
 
   let codexRequest = 0
+  const clearCodexRefreshTimer = () => {
+    clearTimeout(codexRefreshTimer)
+    codexRefreshTimer = undefined
+  }
+
+  const scheduleCodexRefresh = () => {
+    clearCodexRefreshTimer()
+    if (disposed || !codexEnabled()) return
+
+    codexRefreshTimer = setTimeout(() => {
+      void refreshCodexUsage()
+    }, randomCodexRefreshMs())
+  }
+
   const refreshCodexUsage = async () => {
+    clearCodexRefreshTimer()
+    if (disposed) return
     if (!codexEnabled()) {
       setCodexState({ status: "no-auth" })
       return
@@ -161,15 +180,19 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     try {
       const stateDir = props.api.state.path.state
       const result = await fetchCodexUsage(stateDir)
-      if (request !== codexRequest) return
+      if (disposed || request !== codexRequest) return
       if (result.ok) {
         setCodexState({ status: "ready", usage: result.usage })
       } else {
         setCodexState({ status: "error", message: result.message })
       }
     } catch (cause) {
-      if (request !== codexRequest) return
+      if (disposed || request !== codexRequest) return
       setCodexState({ status: "error", message: errorMessage(cause) })
+    } finally {
+      if (!disposed && request === codexRequest && codexEnabled()) {
+        scheduleCodexRefresh()
+      }
     }
   }
 
@@ -204,8 +227,13 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
 
   createEffect(() => {
-    if (!codexEnabled()) return
-    refreshCodexUsage()
+    if (!codexEnabled()) {
+      clearCodexRefreshTimer()
+      setCodexState({ status: "no-auth" })
+      return
+    }
+
+    void refreshCodexUsage()
   })
 
   onMount(() => {
@@ -214,11 +242,6 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(interval))
 
-    const codexInterval = setInterval(() => {
-      if (codexEnabled()) refreshCodexUsage()
-    }, props.options.balanceRefreshMs)
-    onCleanup(() => clearInterval(codexInterval))
-
     if (!versionCheckDone) {
       versionCheckDone = true
       void checkLatestVersion(setUpdateVersion)
@@ -226,7 +249,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
 
   onCleanup(() => {
+    disposed = true
     clearTimeout(updateBannerTimer)
+    clearCodexRefreshTimer()
     for (const controller of controllers.values()) {
       controller.abort()
     }

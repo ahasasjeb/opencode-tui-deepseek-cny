@@ -1,7 +1,7 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { Message, Part, Session } from "@opencode-ai/sdk/v2"
 import { BALANCE_TRACKED_PROVIDERS, TRACKED_PROVIDERS, trackedModel, type BalanceProviderID, type TrackedProviderID } from "../pricing.js"
-import { isRecord } from "./options.js"
+import { isRecord } from "../utils.js"
 
 export function providerTokens(api: TuiPluginApi) {
   const result: Partial<Record<BalanceProviderID, string>> = {}

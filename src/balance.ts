@@ -1,4 +1,5 @@
 import type { BalanceProviderID } from "./pricing.js"
+import { isRecord } from "./utils.js"
 
 export type BalanceInfo = {
   currency: string
@@ -23,23 +24,9 @@ export type BalanceResult =
   }
 
 export async function fetchDeepseekBalance(token: string, signal?: AbortSignal): Promise<BalanceResult> {
-  return fetch("https://api.deepseek.com/user/balance", {
-    method: "GET",
-    signal,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  }).then(async (response) => {
-    if (!response.ok) {
-      return {
-        ok: false,
-        message: `余额接口返回 HTTP ${response.status}`,
-      }
-    }
-
-    return parseDeepseekBalance(await response.json())
-  })
+  const result = await fetchBalanceJson("https://api.deepseek.com/user/balance", token, signal)
+  if (!result.ok) return result
+  return parseDeepseekBalance(result.body)
 }
 
 export type MoonshotBalance = {
@@ -81,23 +68,9 @@ export type DisplayBalanceResult =
   }
 
 export async function fetchMoonshotBalance(token: string, signal?: AbortSignal): Promise<MoonshotBalanceResult> {
-  return fetch("https://api.moonshot.cn/v1/users/me/balance", {
-    method: "GET",
-    signal,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  }).then(async (response) => {
-    if (!response.ok) {
-      return {
-        ok: false,
-        message: `余额接口返回 HTTP ${response.status}`,
-      }
-    }
-
-    return parseMoonshotBalance(await response.json())
-  })
+  const result = await fetchBalanceJson("https://api.moonshot.cn/v1/users/me/balance", token, signal)
+  if (!result.ok) return result
+  return parseMoonshotBalance(result.body)
 }
 
 export async function fetchDisplayBalance(
@@ -126,15 +99,15 @@ export function parseDeepseekBalance(value: unknown): BalanceResult {
   if (!isRecord(value) || typeof value.is_available !== "boolean" || !Array.isArray(value.balance_infos)) {
     return {
       ok: false,
-      message: "余额接口返回格式不符合预期",
+      message: BALANCE_PARSE_ERROR,
     }
   }
 
-  const balances = value.balance_infos.flatMap(parseBalanceInfo)
+  const balances = value.balance_infos.map(parseBalanceInfo).filter((item): item is BalanceInfo => item !== null)
   if (balances.length !== value.balance_infos.length) {
     return {
       ok: false,
-      message: "余额接口返回格式不符合预期",
+      message: BALANCE_PARSE_ERROR,
     }
   }
 
@@ -151,7 +124,7 @@ export function parseMoonshotBalance(value: unknown): MoonshotBalanceResult {
   if (!isRecord(value) || !isRecord(value.data)) {
     return {
       ok: false,
-      message: "余额接口返回格式不符合预期",
+      message: BALANCE_PARSE_ERROR,
     }
   }
 
@@ -161,7 +134,7 @@ export function parseMoonshotBalance(value: unknown): MoonshotBalanceResult {
   if (!isFiniteNumber(availableBalance) || !isFiniteNumber(voucherBalance) || !isFiniteNumber(cashBalance)) {
     return {
       ok: false,
-      message: "余额接口返回格式不符合预期",
+      message: BALANCE_PARSE_ERROR,
     }
   }
 
@@ -218,24 +191,18 @@ function normalizeMoonshotBalance(balance: MoonshotBalance): DisplayBalance {
   }
 }
 
-function parseBalanceInfo(item: unknown) {
-  if (!isRecord(item)) return []
-  if (typeof item.currency !== "string") return []
-  if (typeof item.total_balance !== "string") return []
-  if (typeof item.granted_balance !== "string") return []
-  if (typeof item.topped_up_balance !== "string") return []
-  return [
-    {
-      currency: item.currency,
-      totalBalance: item.total_balance,
-      grantedBalance: item.granted_balance,
-      toppedUpBalance: item.topped_up_balance,
-    },
-  ]
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+function parseBalanceInfo(item: unknown): BalanceInfo | null {
+  if (!isRecord(item)) return null
+  if (typeof item.currency !== "string") return null
+  if (typeof item.total_balance !== "string") return null
+  if (typeof item.granted_balance !== "string") return null
+  if (typeof item.topped_up_balance !== "string") return null
+  return {
+    currency: item.currency,
+    totalBalance: item.total_balance,
+    grantedBalance: item.granted_balance,
+    toppedUpBalance: item.topped_up_balance,
+  }
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -247,4 +214,33 @@ function numberFromBalance(value: string | undefined) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return undefined
   return amount
+}
+
+const BALANCE_PARSE_ERROR = "余额接口返回格式不符合预期"
+
+async function fetchBalanceJson(
+  url: string,
+  token: string,
+  signal?: AbortSignal,
+): Promise<{ ok: true; body: unknown } | { ok: false; message: string }> {
+  const response = await fetch(url, {
+    method: "GET",
+    signal,
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      message: `余额接口返回 HTTP ${response.status}`,
+    }
+  }
+
+  return {
+    ok: true,
+    body: await response.json(),
+  }
 }

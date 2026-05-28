@@ -1,6 +1,6 @@
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { RGBA } from "@opentui/core"
-import { For, Match, Show, Switch } from "solid-js"
+import { createSignal, For, Match, Show, Switch } from "solid-js"
 import type { BalanceTrackedProvider, SessionCostSummary } from "../pricing.js"
 import { PLUGIN_NAME } from "../version.js"
 import { formatDetails, formatMoney, formatTime, formatTokens } from "./format.js"
@@ -9,14 +9,24 @@ import { balanceTone, type BalanceState } from "./state.js"
 type Theme = TuiPluginApi["theme"]["current"]
 
 export function Header(props: { theme: Theme; canRefresh: boolean; onRefresh: () => void }) {
+  const [hovered, setHovered] = createSignal(false)
+  const refreshHovered = () => props.canRefresh && hovered()
+
   return (
     <box flexDirection="row" justifyContent="space-between">
       <text fg={props.theme.text}>
         <span style={{ fg: props.theme.primary }}>◆</span> <b>LLM CNY</b>
       </text>
       <Show when={props.canRefresh}>
-        <text fg={props.theme.textMuted} onMouseDown={props.onRefresh}>
-          刷新
+        <text
+          fg={refreshHovered() ? props.theme.primary : props.theme.textMuted}
+          bg={refreshHovered() ? props.theme.borderSubtle : undefined}
+          selectable={false}
+          onMouseOver={() => setHovered(true)}
+          onMouseOut={() => setHovered(false)}
+          onMouseDown={props.onRefresh}
+        >
+          {" 刷新 "}
         </text>
       </Show>
     </box>

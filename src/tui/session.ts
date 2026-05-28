@@ -31,6 +31,13 @@ export function hasOpenAIOAuthProvider(
   return true
 }
 
+export function hasOpenAIUsage(messages: ReadonlyArray<Message>) {
+  return messages.some((item) => {
+    if (item.role === "user") return item.model.providerID === "openai"
+    return item.providerID === "openai"
+  })
+}
+
 export function completedTrackedReplyKey(messages: ReadonlyArray<Message>) {
   return messages
     .flatMap((item) => {

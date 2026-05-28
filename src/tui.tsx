@@ -22,6 +22,7 @@ import {
   childUsageRefreshKey,
   completedTrackedReplyKey,
   hasOpenAIOAuthProvider,
+  hasOpenAIUsage,
   isSubagentSession,
   mergeMessages,
   providerTokens,
@@ -54,7 +55,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const tokens = createMemo(() => providerTokens(props.api))
   const activeProviders = createMemo(() => activeTrackedProviders(usageMessages()))
   const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
-  const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider))
+  const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(usageMessages()))
   const childRefreshKey = createMemo(() =>

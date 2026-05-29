@@ -4,6 +4,8 @@ export type KimiChinaModelID = "kimi-k2.5" | "kimi-k2.6"
 
 export type XiaomiMiMoModelID = "mimo-v2.5" | "mimo-v2.5-pro"
 
+export type ZhipuAIModelID = "glm-5.1" | "glm-5-turbo" | "glm-5"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -30,10 +32,16 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "zhipuai",
+    label: "ZhipuAI",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
-export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID
+export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID | ZhipuAIModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -94,8 +102,10 @@ type ModelPriceEntry = {
   providerLabel: string
   modelID: TrackedModelID
   modelLabel: string
-  priceFor: (time: number) => Price
+  priceFor: (time: number, inputTokens: number) => Price
 }
+
+const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 
 const flashPrice: Price = {
   cacheHitInput: 0.02,
@@ -136,6 +146,48 @@ const mimoV25ProPrice: Price = {
   cacheHitInput: 0.025,
   cacheMissInput: 3,
   output: 6,
+  discounted: false,
+}
+
+const glm51ShortContextPrice: Price = {
+  cacheHitInput: 1.3,
+  cacheMissInput: 6,
+  output: 24,
+  discounted: false,
+}
+
+const glm51LongContextPrice: Price = {
+  cacheHitInput: 2,
+  cacheMissInput: 8,
+  output: 28,
+  discounted: false,
+}
+
+const glm5TurboShortContextPrice: Price = {
+  cacheHitInput: 1.2,
+  cacheMissInput: 5,
+  output: 22,
+  discounted: false,
+}
+
+const glm5TurboLongContextPrice: Price = {
+  cacheHitInput: 1.8,
+  cacheMissInput: 7,
+  output: 26,
+  discounted: false,
+}
+
+const glm5ShortContextPrice: Price = {
+  cacheHitInput: 1,
+  cacheMissInput: 4,
+  output: 18,
+  discounted: false,
+}
+
+const glm5LongContextPrice: Price = {
+  cacheHitInput: 1.5,
+  cacheMissInput: 6,
+  output: 22,
   discounted: false,
 }
 
@@ -182,19 +234,42 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "V2.5 Pro",
     priceFor: () => mimoV25ProPrice,
   },
+  {
+    providerID: "zhipuai",
+    providerLabel: "ZhipuAI",
+    modelID: "glm-5.1",
+    modelLabel: "GLM-5.1",
+    priceFor: (_time, inputTokens) => zhipuTieredPrice(inputTokens, glm51ShortContextPrice, glm51LongContextPrice),
+  },
+  {
+    providerID: "zhipuai",
+    providerLabel: "ZhipuAI",
+    modelID: "glm-5-turbo",
+    modelLabel: "GLM-5-Turbo",
+    priceFor: (_time, inputTokens) =>
+      zhipuTieredPrice(inputTokens, glm5TurboShortContextPrice, glm5TurboLongContextPrice),
+  },
+  {
+    providerID: "zhipuai",
+    providerLabel: "ZhipuAI",
+    modelID: "glm-5",
+    modelLabel: "GLM-5",
+    priceFor: (_time, inputTokens) => zhipuTieredPrice(inputTokens, glm5ShortContextPrice, glm5LongContextPrice),
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
   return MODEL_PRICES.find((item) => item.providerID === providerID && item.modelID === modelID)
 }
 
-export function priceForModel(modelID: TrackedModelID, time = Date.now()): Price {
+export function priceForModel(modelID: TrackedModelID, time = Date.now(), inputTokens = 0): Price {
   if (modelID === "deepseek-v4-flash") return flashPrice
-  if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time)
+  if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time, inputTokens)
   if (modelID === "kimi-k2.5") return kimiK25Price
   if (modelID === "kimi-k2.6") return kimiK26Price
   if (modelID === "mimo-v2.5") return mimoV25Price
-  return mimoV25ProPrice
+  if (modelID === "mimo-v2.5-pro") return mimoV25ProPrice
+  return MODEL_PRICES.find((item) => item.modelID === modelID)!.priceFor(time, inputTokens)
 }
 
 export function supportsBalance(provider: TrackedProvider): provider is BalanceTrackedProvider {
@@ -226,9 +301,10 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
     .filter((item) => item.providerID === entry.providerID && item.modelID === entry.modelID)
     .reduce<ModelSubtotal>(
       (sum, item) => {
-        const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now())
         const cacheHitInputTokens = safe(item.tokens.cache.read)
         const cacheMissInputTokens = safe(item.tokens.input) + safe(item.tokens.cache.write)
+        const inputTokens = cacheHitInputTokens + cacheMissInputTokens
+        const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now(), inputTokens)
         const outputTokens = safe(item.tokens.output) + safe(item.tokens.reasoning)
 
         return {
@@ -270,6 +346,10 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
 function safe(value: number) {
   if (!Number.isFinite(value)) return 0
   return Math.max(0, value)
+}
+
+function zhipuTieredPrice(inputTokens: number, shortContextPrice: Price, longContextPrice: Price) {
+  return inputTokens < ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS ? shortContextPrice : longContextPrice
 }
 
 function roundMoney(value: number) {

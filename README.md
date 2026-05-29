@@ -1,12 +1,13 @@
 # llm-cny
 
-在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo 的人民币费用，以及 Codex 限额。
+在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo、ZhipuAI GLM 的人民币费用，以及 Codex 限额。
 
 ## 功能
 
 - 统计 `deepseek` 提供商下的 `deepseek-v4-flash`、`deepseek-v4-pro`。
 - 统计 `moonshotai-cn` 提供商下的 `kimi-k2.5`、`kimi-k2.6`。
 - 统计 `xiaomi` 提供商下的 `mimo-v2.5`、`mimo-v2.5-pro`，仅统计费用，不查余额。
+- 统计 `zhipuai` 提供商下的 `glm-5.1`、`glm-5-turbo`、`glm-5`，按上下文长度阶梯计费，仅统计费用，不查余额。
 - 检测 `openai` provider 的 OAuth 登录状态并显示 Codex 限额。
 - 基于当前 session 的 assistant 消息 token 用量重新计算人民币费用。
 - 区分缓存命中输入、缓存未命中输入、输出 token；推理 token 按输出价格计费。
@@ -25,14 +26,22 @@
 
 单位为人民币 / 百万 tokens。
 
-| 模型 | 缓存命中输入 | 缓存未命中输入 | 输出 |
-| --- | ---: | ---: | ---: |
-| deepseek-v4-flash | 0.02 元 | 1 元 | 2 元 |
-| deepseek-v4-pro | 0.025 元 | 3 元 | 6 元 |
-| kimi-k2.5 | 0.7 元 | 4 元 | 21 元 |
-| kimi-k2.6 | 1.1 元 | 6.5 元 | 27 元 |
-| mimo-v2.5 | 0.02 元 | 1 元 | 2 元 |
-| mimo-v2.5-pro | 0.025 元 | 3 元 | 6 元 |
+| 模型 | 上下文 | 缓存命中输入 | 缓存未命中输入 | 输出 |
+| --- | --- | ---: | ---: | ---: |
+| deepseek-v4-flash | - | 0.02 元 | 1 元 | 2 元 |
+| deepseek-v4-pro | - | 0.025 元 | 3 元 | 6 元 |
+| kimi-k2.5 | - | 0.7 元 | 4 元 | 21 元 |
+| kimi-k2.6 | - | 1.1 元 | 6.5 元 | 27 元 |
+| mimo-v2.5 | - | 0.02 元 | 1 元 | 2 元 |
+| mimo-v2.5-pro | - | 0.025 元 | 3 元 | 6 元 |
+| glm-5.1 | < 32K | 1.3 元 | 6 元 | 24 元 |
+| glm-5.1 | >= 32K | 2 元 | 8 元 | 28 元 |
+| glm-5-turbo | < 32K | 1.2 元 | 5 元 | 22 元 |
+| glm-5-turbo | >= 32K | 1.8 元 | 7 元 | 26 元 |
+| glm-5 | < 32K | 1 元 | 4 元 | 18 元 |
+| glm-5 | >= 32K | 1.5 元 | 6 元 | 22 元 |
+
+ZhipuAI 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，32K 及以上走高档。
 
 ## 安装
 
@@ -81,4 +90,4 @@ bun run build
 
 ## 说明
 
-DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，moonshot China 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。Xiaomi MiMo 暂不支持余额接口，因此只统计费用。Codex 限额通过本地 OpenAI OAuth 凭据查询。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费与限额以官方账单和官方控制台为准。
+DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，moonshot China 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。Xiaomi MiMo、ZhipuAI 暂不支持余额接口，因此只统计费用。Codex 限额通过本地 OpenAI OAuth 凭据查询。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费与限额以官方账单和官方控制台为准。

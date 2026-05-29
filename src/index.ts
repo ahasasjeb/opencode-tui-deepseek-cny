@@ -9,6 +9,7 @@ export {
   type DeepseekModelID,
   type KimiChinaModelID,
   type XiaomiMiMoModelID,
+  type ZhipuAIModelID,
   type BalanceProviderID,
   type BalanceTrackedProvider,
   type ModelSubtotal,

@@ -158,3 +158,76 @@ test("按 Xiaomi MiMo 人民币价格统计且不参与余额查询", () => {
   expect(summary.models.map((item) => item.modelID)).toEqual(["mimo-v2.5", "mimo-v2.5-pro"])
   expect(summary.models[0]?.providerLabel).toBe("Xiaomi MiMo")
 })
+
+test("按 ZhipuAI GLM 阶梯人民币价格统计且不参与余额查询", () => {
+  expect(priceForModel("glm-5.1", Date.now(), 31_999)).toEqual({
+    cacheHitInput: 1.3,
+    cacheMissInput: 6,
+    output: 24,
+    discounted: false,
+  })
+  expect(priceForModel("glm-5.1", Date.now(), 32_000)).toEqual({
+    cacheHitInput: 2,
+    cacheMissInput: 8,
+    output: 28,
+    discounted: false,
+  })
+  expect(priceForModel("glm-5-turbo", Date.now(), 31_999)).toEqual({
+    cacheHitInput: 1.2,
+    cacheMissInput: 5,
+    output: 22,
+    discounted: false,
+  })
+  expect(priceForModel("glm-5-turbo", Date.now(), 32_000)).toEqual({
+    cacheHitInput: 1.8,
+    cacheMissInput: 7,
+    output: 26,
+    discounted: false,
+  })
+  expect(priceForModel("glm-5", Date.now(), 31_999)).toEqual({
+    cacheHitInput: 1,
+    cacheMissInput: 4,
+    output: 18,
+    discounted: false,
+  })
+  expect(priceForModel("glm-5", Date.now(), 32_000)).toEqual({
+    cacheHitInput: 1.5,
+    cacheMissInput: 6,
+    output: 22,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession([
+    {
+      providerID: "zhipuai",
+      modelID: "glm-5.1",
+      tokens: {
+        input: 31_999,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "zhipuai",
+      modelID: "glm-5.1",
+      tokens: {
+        input: 31_000,
+        output: 0,
+        reasoning: 0,
+        cache: {
+          read: 1_000,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(24.441994)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["glm-5.1"])
+  expect(summary.models[0]?.providerLabel).toBe("ZhipuAI")
+})

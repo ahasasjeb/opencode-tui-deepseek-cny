@@ -231,3 +231,68 @@ test("按 ZhipuAI GLM 阶梯人民币价格统计且不参与余额查询", () =
   expect(summary.models.map((item) => item.modelID)).toEqual(["glm-5.1"])
   expect(summary.models[0]?.providerLabel).toBe("ZhipuAI")
 })
+
+test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => {
+  expect(priceForModel("qwen3.7-max")).toEqual({
+    cacheHitInput: 1.2,
+    cacheMissInput: 6,
+    output: 18,
+    discounted: true,
+    warnings: ["qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间"],
+  })
+  expect(priceForModel("qwen3.6-plus", Date.now(), 256_000)).toEqual({
+    cacheHitInput: 2,
+    cacheMissInput: 2,
+    output: 12,
+    discounted: false,
+    warnings: ["qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计"],
+  })
+  expect(priceForModel("qwen3.6-plus", Date.now(), 256_001)).toEqual({
+    cacheHitInput: 8,
+    cacheMissInput: 8,
+    output: 48,
+    discounted: false,
+    warnings: [
+      "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计",
+      "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费",
+    ],
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession([
+    {
+      providerID: "alibaba-cn",
+      modelID: "qwen3.7-max",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "alibaba-cn",
+      modelID: "qwen3.6-plus",
+      tokens: {
+        input: 256_001,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(75.248008)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["qwen3.7-max", "qwen3.6-plus"])
+  expect(summary.models[0]?.warnings).toEqual(["qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间"])
+  expect(summary.models[1]?.warnings).toEqual([
+    "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计",
+    "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费",
+  ])
+})

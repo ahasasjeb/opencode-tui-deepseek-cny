@@ -6,6 +6,8 @@ export type XiaomiMiMoModelID = "mimo-v2.5" | "mimo-v2.5-pro"
 
 export type ZhipuAIModelID = "glm-5.1" | "glm-5-turbo" | "glm-5"
 
+export type AlibabaChinaModelID = "qwen3.7-max" | "qwen3.6-plus"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -38,10 +40,16 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "alibaba-cn",
+    label: "Alibaba Cloud",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
-export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID | ZhipuAIModelID
+export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID | ZhipuAIModelID | AlibabaChinaModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -51,6 +59,7 @@ type Price = {
   cacheMissInput: number
   output: number
   discounted: boolean
+  warnings?: readonly string[]
 }
 
 type TokenUsage = {
@@ -85,6 +94,7 @@ export type ModelSubtotal = {
   reasoningTokens: number
   costCny: number
   discountedTurns: number
+  warnings: string[]
 }
 
 export type SessionCostSummary = {
@@ -106,6 +116,9 @@ type ModelPriceEntry = {
 }
 
 const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
+const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
+const QWEN_NO_CACHE_WARNING = "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计"
+const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费"
 
 const flashPrice: Price = {
   cacheHitInput: 0.02,
@@ -191,6 +204,30 @@ const glm5LongContextPrice: Price = {
   discounted: false,
 }
 
+const qwen37MaxDiscountPrice: Price = {
+  cacheHitInput: 1.2,
+  cacheMissInput: 6,
+  output: 18,
+  discounted: true,
+  warnings: ["qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间"],
+}
+
+const qwen36PlusShortContextPrice: Price = {
+  cacheHitInput: 2,
+  cacheMissInput: 2,
+  output: 12,
+  discounted: false,
+  warnings: [QWEN_NO_CACHE_WARNING],
+}
+
+const qwen36PlusLongContextPrice: Price = {
+  cacheHitInput: 8,
+  cacheMissInput: 8,
+  output: 48,
+  discounted: false,
+  warnings: [QWEN_NO_CACHE_WARNING, QWEN_EXPENSIVE_CONTEXT_WARNING],
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -255,6 +292,20 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelID: "glm-5",
     modelLabel: "GLM-5",
     priceFor: (_time, inputTokens) => zhipuTieredPrice(inputTokens, glm5ShortContextPrice, glm5LongContextPrice),
+  },
+  {
+    providerID: "alibaba-cn",
+    providerLabel: "Alibaba Cloud",
+    modelID: "qwen3.7-max",
+    modelLabel: "Qwen3.7 Max",
+    priceFor: () => qwen37MaxDiscountPrice,
+  },
+  {
+    providerID: "alibaba-cn",
+    providerLabel: "Alibaba Cloud",
+    modelID: "qwen3.6-plus",
+    modelLabel: "Qwen3.6 Plus",
+    priceFor: (_time, inputTokens) => qwenPlusTieredPrice(inputTokens),
   },
 ]
 
@@ -325,6 +376,7 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
             1_000_000,
           ),
           discountedTurns: sum.discountedTurns + (price.discounted ? 1 : 0),
+          warnings: unique([...sum.warnings, ...(price.warnings ?? [])]),
         }
       },
       {
@@ -339,6 +391,7 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
         reasoningTokens: 0,
         costCny: 0,
         discountedTurns: 0,
+        warnings: [],
       },
     )
 }
@@ -350,6 +403,16 @@ function safe(value: number) {
 
 function zhipuTieredPrice(inputTokens: number, shortContextPrice: Price, longContextPrice: Price) {
   return inputTokens < ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS ? shortContextPrice : longContextPrice
+}
+
+function qwenPlusTieredPrice(inputTokens: number) {
+  return inputTokens <= QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS
+    ? qwen36PlusShortContextPrice
+    : qwen36PlusLongContextPrice
+}
+
+function unique(values: readonly string[]) {
+  return [...new Set(values)]
 }
 
 function roundMoney(value: number) {

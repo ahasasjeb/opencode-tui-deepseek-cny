@@ -10,6 +10,7 @@ export {
   type KimiChinaModelID,
   type XiaomiMiMoModelID,
   type ZhipuAIModelID,
+  type AlibabaChinaModelID,
   type BalanceProviderID,
   type BalanceTrackedProvider,
   type ModelSubtotal,

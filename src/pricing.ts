@@ -117,8 +117,8 @@ type ModelPriceEntry = {
 
 const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
-const QWEN_NO_CACHE_WARNING = "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计"
-const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费"
+const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
+const NO_CACHE_AFTER_MULTI_TURN_WARNING = "对话缓存命中为0，注意资金消耗"
 
 const flashPrice: Price = {
   cacheHitInput: 0.02,
@@ -217,7 +217,6 @@ const qwen36PlusShortContextPrice: Price = {
   cacheMissInput: 2,
   output: 12,
   discounted: false,
-  warnings: [QWEN_NO_CACHE_WARNING],
 }
 
 const qwen36PlusLongContextPrice: Price = {
@@ -225,7 +224,7 @@ const qwen36PlusLongContextPrice: Price = {
   cacheMissInput: 8,
   output: 48,
   discounted: false,
-  warnings: [QWEN_NO_CACHE_WARNING, QWEN_EXPENSIVE_CONTEXT_WARNING],
+  warnings: [QWEN_EXPENSIVE_CONTEXT_WARNING],
 }
 
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
@@ -348,7 +347,7 @@ export function calculateDeepseekSession(records: readonly UsageRecord[]): Sessi
 }
 
 function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): ModelSubtotal {
-  return records
+  const sum = records
     .filter((item) => item.providerID === entry.providerID && item.modelID === entry.modelID)
     .reduce<ModelSubtotal>(
       (sum, item) => {
@@ -394,6 +393,13 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
         warnings: [],
       },
     )
+
+  return sum.turns > 2 && sum.cacheHitInputTokens === 0
+    ? {
+      ...sum,
+      warnings: unique([...sum.warnings, NO_CACHE_AFTER_MULTI_TURN_WARNING]),
+    }
+    : sum
 }
 
 function safe(value: number) {

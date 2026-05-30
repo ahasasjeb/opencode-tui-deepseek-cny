@@ -245,17 +245,13 @@ test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => 
     cacheMissInput: 2,
     output: 12,
     discounted: false,
-    warnings: ["qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计"],
   })
   expect(priceForModel("qwen3.6-plus", Date.now(), 256_001)).toEqual({
     cacheHitInput: 8,
     cacheMissInput: 8,
     output: 48,
     discounted: false,
-    warnings: [
-      "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计",
-      "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费",
-    ],
+    warnings: ["qwen3.6-plus 价格高昂警告"],
   })
   expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
 
@@ -286,13 +282,26 @@ test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => 
         },
       },
     },
+    {
+      providerID: "alibaba-cn",
+      modelID: "qwen3.6-plus",
+      tokens: {
+        input: 1_000,
+        output: 1_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
   ])
 
-  expect(summary.costCny).toBe(75.248008)
+  expect(summary.costCny).toBe(75.262008)
   expect(summary.models.map((item) => item.modelID)).toEqual(["qwen3.7-max", "qwen3.6-plus"])
   expect(summary.models[0]?.warnings).toEqual(["qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间"])
   expect(summary.models[1]?.warnings).toEqual([
-    "qwen3.6-plus 暂按无缓存优惠计价，缓存命中输入按普通输入价格统计",
-    "qwen3.6-plus 已超过 256K 上下文，当前请求按高价档计费",
+    "qwen3.6-plus 价格高昂警告",
+    "多轮对话缓存命中为 0，请注意价格",
   ])
 })

@@ -243,7 +243,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
 
     if (!versionCheckDone) {
       versionCheckDone = true
-      void checkLatestVersion(setUpdateVersion)
+      void checkLatestVersion(props.api, setUpdateVersion)
     }
   })
 
@@ -319,7 +319,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   )
 }
 
-async function checkLatestVersion(setUpdateVersion: (version: string) => void) {
+async function checkLatestVersion(api: TuiPluginApi, setUpdateVersion: (version: string) => void) {
   try {
     const res = await fetch(`https://registry.npmjs.org/${PLUGIN_NAME}`)
     if (!res.ok) return
@@ -327,6 +327,11 @@ async function checkLatestVersion(setUpdateVersion: (version: string) => void) {
     const latest = data["dist-tags"]?.latest
     if (latest && latest !== PLUGIN_VERSION) {
       setUpdateVersion(latest)
+      await api.attention.notify({
+        title: "LLM CNY 有新版本",
+        message: `发现 ${PLUGIN_NAME} ${latest}，运行 opencode plugin ${PLUGIN_NAME}@${latest} --force 更新`,
+        notification: { when: "always" },
+      })
     }
   } catch {
     // silently ignore network errors

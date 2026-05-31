@@ -7,6 +7,7 @@ export {
   trackedModel,
   supportsBalance,
   type DeepseekModelID,
+  type GrokBuildModelID,
   type KimiChinaModelID,
   type XiaomiMiMoModelID,
   type ZhipuAIModelID,
@@ -33,6 +34,12 @@ export {
   type MoonshotBalance,
   type MoonshotBalanceResult,
 } from "./balance.js"
+export {
+  USD_CNY_RATE_URL,
+  fetchUsdCnyRate,
+  parseUsdCnyRate,
+  type ExchangeRateResult,
+} from "./exchange-rate.js"
 export {
   fetchCodexUsage,
   readCodexOAuth,

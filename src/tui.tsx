@@ -4,6 +4,7 @@ import type { Message } from "@opencode-ai/sdk/v2"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { fetchDisplayBalance } from "./balance.js"
 import { fetchCodexUsage, type CodexUsage } from "./codex-usage.js"
+import { fetchUsdCnyRate } from "./exchange-rate.js"
 import { calculateTrackedSession, supportsBalance, type BalanceProviderID } from "./pricing.js"
 import {
   ActivationPrompt,
@@ -57,6 +58,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const activeProviders = createMemo(() => activeTrackedProviders(usageMessages()))
   const activeBalanceProviders = createMemo(() => activeProviders().filter(supportsBalance))
   const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
+  const needsUsdCnyRate = createMemo(() => activeProviders().some((item) => item.id === "openrouter" || item.id === "xai"))
   const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(usageMessages()))
@@ -68,7 +70,8 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
       messages: messages(),
     }),
   )
-  const summary = createMemo(() => calculateTrackedSession(usageRecords(usageMessages())))
+  const [usdCnyRate, setUsdCnyRate] = createSignal<number | undefined>()
+  const summary = createMemo(() => calculateTrackedSession(usageRecords(usageMessages()), { usdCnyRate: usdCnyRate() }))
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
   const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)
@@ -85,6 +88,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   let previousCompletedTrackedReplies = ""
   let childUsageRequest = 0
   let codexRefreshTimer: ReturnType<typeof setTimeout> | undefined
+  let exchangeRateController: AbortController | undefined
   let disposed = false
 
   const setProviderBalance = (providerID: BalanceProviderID, state: BalanceState) => {
@@ -153,6 +157,22 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }
   }
 
+  const refreshUsdCnyRate = () => {
+    if (!needsUsdCnyRate()) return
+    exchangeRateController?.abort()
+    const next = new AbortController()
+    exchangeRateController = next
+    fetchUsdCnyRate(next.signal).then(
+      (result) => {
+        if (next.signal.aborted || exchangeRateController !== next) return
+        if (result.ok) setUsdCnyRate(result.rate)
+      },
+      () => {
+        // Keep the previous successful rate, or the pending warning if none was loaded yet.
+      },
+    )
+  }
+
   let codexRequest = 0
   const clearCodexRefreshTimer = () => {
     clearTimeout(codexRefreshTimer)
@@ -209,6 +229,10 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   })
 
   createEffect(() => {
+    if (needsUsdCnyRate() && usdCnyRate() === undefined) refreshUsdCnyRate()
+  })
+
+  createEffect(() => {
     const current = completedTrackedReplies()
     if (current === previousCompletedTrackedReplies) return
     previousCompletedTrackedReplies = current
@@ -238,6 +262,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   onMount(() => {
     const interval = setInterval(() => {
       if (activated()) refreshActive()
+      if (needsUsdCnyRate()) refreshUsdCnyRate()
     }, props.options.balanceRefreshMs)
     onCleanup(() => clearInterval(interval))
 
@@ -254,6 +279,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     for (const controller of controllers.values()) {
       controller.abort()
     }
+    exchangeRateController?.abort()
   })
 
   return (
@@ -272,10 +298,12 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           theme={props.api.theme.current}
           canRefresh={
             (hasTrackedUsage() && activeBalanceProviders().some((item) => tokens()[item.id] !== undefined)) ||
-            codexEnabled()
+            codexEnabled() ||
+            needsUsdCnyRate()
           }
           onRefresh={() => {
             refreshActive()
+            refreshUsdCnyRate()
             void refreshCodexUsage()
           }}
         />

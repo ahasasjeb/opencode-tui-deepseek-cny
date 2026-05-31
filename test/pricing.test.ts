@@ -305,3 +305,73 @@ test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => 
     "多轮对话缓存命中为 0，请注意价格",
   ])
 })
+
+test("按 OpenRouter 和 xAI Grok Build 美元价格转换人民币统计", () => {
+  expect(priceForModel("grok-build-0.1", Date.now(), 0, { usdCnyRate: 6.7867 })).toEqual({
+    cacheHitInput: 1.35734,
+    cacheMissInput: 6.7867,
+    output: 13.5734,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "openrouter",
+        modelID: "x-ai/grok-build-0.1",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "xai",
+        modelID: "grok-build-0.1",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 6.7867 },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(42.07754)
+  expect(summary.models.map((item) => `${item.providerID}:${item.modelID}`)).toEqual([
+    "openrouter:x-ai/grok-build-0.1",
+    "xai:grok-build-0.1",
+  ])
+})
+
+test("Grok Build 汇率未就绪时先给出提示", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "openrouter",
+      modelID: "grok-build-0.1",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(0)
+  expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
+})

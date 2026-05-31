@@ -1,6 +1,6 @@
 # llm-cny
 
-在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen 的人民币费用，以及 Codex 限额。
+在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen、OpenRouter/xAI Grok Build 的人民币费用，以及 Codex 限额。
 
 ## 功能
 
@@ -9,6 +9,7 @@
 - 统计 `xiaomi` 提供商下的 `mimo-v2.5`、`mimo-v2.5-pro`，仅统计费用，不查余额。
 - 统计 `zhipuai` 提供商下的 `glm-5.1`、`glm-5-turbo`、`glm-5`，按上下文长度阶梯计费，仅统计费用，不查余额。
 - 统计 `alibaba-cn` 提供商下的 `qwen3.7-max`、`qwen3.6-plus`，按上下文长度和当前优惠计费，仅统计费用，不查余额。
+- 统计 `openrouter` 或 `xai` 提供商下的 `grok-build-0.1`、`x-ai/grok-build-0.1`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 检测 `openai` provider 的 OAuth 登录状态并显示 Codex 限额。
 - 基于当前 session 的 assistant 消息 token 用量重新计算人民币费用。
 - 区分缓存命中输入、缓存未命中输入、输出 token；推理 token 按输出价格计费。
@@ -44,9 +45,11 @@
 | qwen3.7-max | 限时五折 | 1.2 元 | 6 元 | 18 元 |
 | qwen3.6-plus | <= 256K | 2 元 | 2 元 | 12 元 |
 | qwen3.6-plus | > 256K | 8 元 | 8 元 | 48 元 |
+| grok-build-0.1 / x-ai/grok-build-0.1 | USD/CNY 汇率换算 | 0.2 美元 | 1 美元 | 2 美元 |
 
 ZhipuAI 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，32K 及以上走高档。
 qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间。qwen3.6-plus 超过 256K 上下文会在 TUI 中提示高价档。多轮对话后缓存命中为 0 时，TUI 会显示通用价格警告。
+Grok Build 价格单位为美元 / 百万 tokens，插件会异步请求 `https://huilv.lzy1.fun/api/huilv` 的 USD/CNY 汇率；成功后自动换算为人民币计费，未获取到汇率前会先显示等待提示。
 
 ## 安装
 

@@ -8,6 +8,8 @@ export type ZhipuAIModelID = "glm-5.1" | "glm-5-turbo" | "glm-5"
 
 export type AlibabaChinaModelID = "qwen3.7-max" | "qwen3.6-plus"
 
+export type GrokBuildModelID = "grok-build-0.1" | "x-ai/grok-build-0.1"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -46,10 +48,28 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    env: [],
+    balance: false,
+  },
+  {
+    id: "xai",
+    label: "xAI",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
-export type TrackedModelID = DeepseekModelID | KimiChinaModelID | XiaomiMiMoModelID | ZhipuAIModelID | AlibabaChinaModelID
+export type TrackedModelID =
+  | DeepseekModelID
+  | KimiChinaModelID
+  | XiaomiMiMoModelID
+  | ZhipuAIModelID
+  | AlibabaChinaModelID
+  | GrokBuildModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -112,13 +132,18 @@ type ModelPriceEntry = {
   providerLabel: string
   modelID: TrackedModelID
   modelLabel: string
-  priceFor: (time: number, inputTokens: number) => Price
+  priceFor: (time: number, inputTokens: number, options: PricingOptions) => Price
+}
+
+export type PricingOptions = {
+  usdCnyRate?: number
 }
 
 const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
 const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
-const NO_CACHE_AFTER_MULTI_TURN_WARNING = "对话缓存命中为0，注意资金消耗"
+const NO_CACHE_AFTER_MULTI_TURN_WARNING = "多轮对话缓存命中为 0，请注意价格"
+const USD_CNY_RATE_PENDING_WARNING = "正在获取美元兑人民币汇率，成功后自动换算人民币价格"
 
 const flashPrice: Price = {
   cacheHitInput: 0.02,
@@ -227,6 +252,12 @@ const qwen36PlusLongContextPrice: Price = {
   warnings: [QWEN_EXPENSIVE_CONTEXT_WARNING],
 }
 
+const grokBuildUsdPrice = {
+  cacheHitInput: 0.2,
+  cacheMissInput: 1,
+  output: 2,
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -306,20 +337,48 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "Qwen3.6 Plus",
     priceFor: (_time, inputTokens) => qwenPlusTieredPrice(inputTokens),
   },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "grok-build-0.1",
+    modelLabel: "Grok Build 0.1",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "x-ai/grok-build-0.1",
+    modelLabel: "x-ai/grok-build-0.1",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
+  },
+  {
+    providerID: "xai",
+    providerLabel: "xAI",
+    modelID: "grok-build-0.1",
+    modelLabel: "Grok Build 0.1",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
+  },
+  {
+    providerID: "xai",
+    providerLabel: "xAI",
+    modelID: "x-ai/grok-build-0.1",
+    modelLabel: "x-ai/grok-build-0.1",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
   return MODEL_PRICES.find((item) => item.providerID === providerID && item.modelID === modelID)
 }
 
-export function priceForModel(modelID: TrackedModelID, time = Date.now(), inputTokens = 0): Price {
+export function priceForModel(modelID: TrackedModelID, time = Date.now(), inputTokens = 0, options: PricingOptions = {}): Price {
   if (modelID === "deepseek-v4-flash") return flashPrice
-  if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time, inputTokens)
+  if (modelID === "deepseek-v4-pro") return MODEL_PRICES[1]!.priceFor(time, inputTokens, options)
   if (modelID === "kimi-k2.5") return kimiK25Price
   if (modelID === "kimi-k2.6") return kimiK26Price
   if (modelID === "mimo-v2.5") return mimoV25Price
   if (modelID === "mimo-v2.5-pro") return mimoV25ProPrice
-  return MODEL_PRICES.find((item) => item.modelID === modelID)!.priceFor(time, inputTokens)
+  return MODEL_PRICES.find((item) => item.modelID === modelID)!.priceFor(time, inputTokens, options)
 }
 
 export function supportsBalance(provider: TrackedProvider): provider is BalanceTrackedProvider {
@@ -328,8 +387,8 @@ export function supportsBalance(provider: TrackedProvider): provider is BalanceT
 
 export const BALANCE_TRACKED_PROVIDERS = TRACKED_PROVIDERS.filter(supportsBalance)
 
-export function calculateTrackedSession(records: readonly UsageRecord[]): SessionCostSummary {
-  const models = MODEL_PRICES.map((entry) => subtotal(entry, records)).filter((item) => item.turns > 0)
+export function calculateTrackedSession(records: readonly UsageRecord[], options: PricingOptions = {}): SessionCostSummary {
+  const models = MODEL_PRICES.map((entry) => subtotal(entry, records, options)).filter((item) => item.turns > 0)
 
   return {
     turns: models.reduce((sum, item) => sum + item.turns, 0),
@@ -346,7 +405,7 @@ export function calculateDeepseekSession(records: readonly UsageRecord[]): Sessi
   return calculateTrackedSession(records.filter((item) => item.providerID === "deepseek"))
 }
 
-function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): ModelSubtotal {
+function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[], options: PricingOptions): ModelSubtotal {
   const sum = records
     .filter((item) => item.providerID === entry.providerID && item.modelID === entry.modelID)
     .reduce<ModelSubtotal>(
@@ -354,7 +413,7 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
         const cacheHitInputTokens = safe(item.tokens.cache.read)
         const cacheMissInputTokens = safe(item.tokens.input) + safe(item.tokens.cache.write)
         const inputTokens = cacheHitInputTokens + cacheMissInputTokens
-        const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now(), inputTokens)
+        const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now(), inputTokens, options)
         const outputTokens = safe(item.tokens.output) + safe(item.tokens.reasoning)
 
         return {
@@ -394,7 +453,7 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[]): Mode
       },
     )
 
-  return sum.turns > 2 && sum.cacheHitInputTokens === 0
+  return sum.turns > 1 && sum.cacheHitInputTokens === 0
     ? {
       ...sum,
       warnings: unique([...sum.warnings, NO_CACHE_AFTER_MULTI_TURN_WARNING]),
@@ -415,6 +474,25 @@ function qwenPlusTieredPrice(inputTokens: number) {
   return inputTokens <= QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS
     ? qwen36PlusShortContextPrice
     : qwen36PlusLongContextPrice
+}
+
+function usdPrice(rate: number | undefined, price: Omit<Price, "discounted" | "warnings">): Price {
+  if (!Number.isFinite(rate) || rate === undefined || rate <= 0) {
+    return {
+      cacheHitInput: 0,
+      cacheMissInput: 0,
+      output: 0,
+      discounted: false,
+      warnings: [USD_CNY_RATE_PENDING_WARNING],
+    }
+  }
+
+  return {
+    cacheHitInput: roundMoney(price.cacheHitInput * rate),
+    cacheMissInput: roundMoney(price.cacheMissInput * rate),
+    output: roundMoney(price.output * rate),
+    discounted: false,
+  }
 }
 
 function unique(values: readonly string[]) {

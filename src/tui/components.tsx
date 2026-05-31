@@ -86,7 +86,7 @@ export function ActivationPrompt(props: { theme: Theme }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
-        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI 或 Alibaba Cloud 模型返回一次消息后激活
+        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI、Alibaba Cloud、OpenRouter 或 xAI 模型返回一次消息后激活
       </text>
     </box>
   )

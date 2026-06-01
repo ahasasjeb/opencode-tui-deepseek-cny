@@ -2,19 +2,13 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { RGBA } from "@opentui/core"
 import { Match, Show, Switch } from "solid-js"
 import type { CodexUsage, WindowLimit } from "../codex-usage.js"
+import { formatWindowLabel } from "./codex-format.js"
 
 type Theme = TuiPluginApi["theme"]["current"]
 
 const BAR_WIDTH = 20
 const FILL_CHAR = "█"
 const EMPTY_CHAR = "░"
-
-function formatWindowLabel(limit: WindowLimit): string {
-  const seconds = limit.windowSeconds
-  if (seconds >= 3600 && seconds % 3600 === 0) return `${seconds / 3600} 小时限额`
-  if (seconds >= 60) return `${Math.round(seconds / 60)} 分钟限额`
-  return "使用限额"
-}
 
 function formatResetTime(unixSeconds: number): string {
   if (unixSeconds <= 0) return ""

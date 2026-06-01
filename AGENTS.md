@@ -17,3 +17,5 @@
 - `README.md`：用户文档、支持模型和价格表。
 - `opencode-tui-plugin-api-reference.md`：OpenCode 插件 API 参考。
 - `opencode/`：可选的 OpenCode 源码目录，不保证每个克隆都有。
+
+运行测试时，需要排除`opencode`文件夹

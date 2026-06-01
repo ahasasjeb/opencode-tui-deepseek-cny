@@ -325,6 +325,7 @@ test("按 MiniMax M3 阶梯和限时五折人民币价格统计", () => {
     cacheMissInput: 8.4,
     output: 33.6,
     discounted: false,
+    warnings: ["minimax-m3 512K 到 1M 价格高昂警告"],
   })
   expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
 
@@ -371,6 +372,7 @@ test("按 MiniMax M3 阶梯和限时五折人民币价格统计", () => {
   expect(summary.models[0]?.discountedTurns).toBe(1)
   expect(summary.models[0]?.warnings).toEqual([
     "minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束",
+    "minimax-m3 512K 到 1M 价格高昂警告",
   ])
 })
 

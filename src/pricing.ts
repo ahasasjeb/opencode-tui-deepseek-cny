@@ -153,6 +153,7 @@ const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
 const MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS = 512_000
 const MINIMAX_M3_DISCOUNT_END_TIME = Date.parse("2026-06-08T00:00:00+08:00")
 const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
+const MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING = "minimax-m3 512K 到 1M 价格高昂警告"
 const NO_CACHE_AFTER_MULTI_TURN_WARNING = "多轮对话缓存命中为 0，请注意价格"
 const USD_CNY_RATE_PENDING_WARNING = "正在获取美元兑人民币汇率，成功后自动换算人民币价格"
 
@@ -283,6 +284,7 @@ const minimaxM3LongContextPrice: Price = {
   cacheMissInput: 8.4,
   output: 33.6,
   discounted: false,
+  warnings: [MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING],
 }
 
 const grokBuildUsdPrice = {

@@ -306,6 +306,74 @@ test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => 
   ])
 })
 
+test("按 MiniMax M3 阶梯和限时五折人民币价格统计", () => {
+  expect(priceForModel("minimax-m3", Date.parse("2026-06-07T23:59:59+08:00"), 512_000)).toEqual({
+    cacheHitInput: 0.42,
+    cacheMissInput: 2.1,
+    output: 8.4,
+    discounted: true,
+    warnings: ["minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束"],
+  })
+  expect(priceForModel("minimax-m3", Date.parse("2026-06-08T00:00:00+08:00"), 512_000)).toEqual({
+    cacheHitInput: 0.84,
+    cacheMissInput: 4.2,
+    output: 16.8,
+    discounted: false,
+  })
+  expect(priceForModel("minimax-m3", Date.parse("2026-06-07T23:59:59+08:00"), 512_001)).toEqual({
+    cacheHitInput: 1.68,
+    cacheMissInput: 8.4,
+    output: 33.6,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession([
+    {
+      providerID: "minimax-cn",
+      modelID: "minimax-m3",
+      time: {
+        completed: Date.parse("2026-06-01T12:00:00+08:00"),
+      },
+      tokens: {
+        input: 400_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 100_000,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "minimax-cn",
+      modelID: "minimax-m3",
+      time: {
+        completed: Date.parse("2026-06-01T12:00:00+08:00"),
+      },
+      tokens: {
+        input: 512_001,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(47.182808)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["minimax-m3"])
+  expect(summary.models[0]?.providerID).toBe("minimax-cn")
+  expect(summary.models[0]?.providerLabel).toBe("MiniMax")
+  expect(summary.models[0]?.discountedTurns).toBe(1)
+  expect(summary.models[0]?.warnings).toEqual([
+    "minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束",
+  ])
+})
+
 test("按 OpenRouter 和 xAI Grok Build 美元价格转换人民币统计", () => {
   expect(priceForModel("grok-build-0.1", Date.now(), 0, { usdCnyRate: 6.7867 })).toEqual({
     cacheHitInput: 1.35734,

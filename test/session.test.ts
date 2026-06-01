@@ -51,6 +51,18 @@ test("完成后的 Xiaomi MiMo 回复会激活 provider", () => {
   expect(providers.map((item) => item.id)).toEqual(["xiaomi"])
 })
 
+test("完成后的 MiniMax M3 回复会激活 provider", () => {
+  const providers = activeTrackedProviders([
+    assistantMessage({
+      providerID: "minimax-cn",
+      modelID: "minimax-m3",
+      completed: 1,
+    }),
+  ])
+
+  expect(providers.map((item) => item.id)).toEqual(["minimax-cn"])
+})
+
 test("OpenAI OAuth provider 会激活 Codex 面板", () => {
   expect(
     hasOpenAIOAuthProvider([

@@ -8,6 +8,8 @@ export type ZhipuAIModelID = "glm-5.1" | "glm-5-turbo" | "glm-5"
 
 export type AlibabaChinaModelID = "qwen3.7-max" | "qwen3.6-plus"
 
+export type MiniMaxChinaModelID = "minimax-m3"
+
 export type GrokBuildModelID = "grok-build-0.1" | "x-ai/grok-build-0.1"
 
 type TrackedProviderEntry = {
@@ -49,6 +51,12 @@ export const TRACKED_PROVIDERS = [
     balance: false,
   },
   {
+    id: "minimax-cn",
+    label: "MiniMax",
+    env: [],
+    balance: false,
+  },
+  {
     id: "openrouter",
     label: "OpenRouter",
     env: [],
@@ -69,6 +77,7 @@ export type TrackedModelID =
   | XiaomiMiMoModelID
   | ZhipuAIModelID
   | AlibabaChinaModelID
+  | MiniMaxChinaModelID
   | GrokBuildModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
@@ -141,6 +150,8 @@ export type PricingOptions = {
 
 const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
+const MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS = 512_000
+const MINIMAX_M3_DISCOUNT_END_TIME = Date.parse("2026-06-08T00:00:00+08:00")
 const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
 const NO_CACHE_AFTER_MULTI_TURN_WARNING = "多轮对话缓存命中为 0，请注意价格"
 const USD_CNY_RATE_PENDING_WARNING = "正在获取美元兑人民币汇率，成功后自动换算人民币价格"
@@ -252,6 +263,28 @@ const qwen36PlusLongContextPrice: Price = {
   warnings: [QWEN_EXPENSIVE_CONTEXT_WARNING],
 }
 
+const minimaxM3ShortContextDiscountPrice: Price = {
+  cacheHitInput: 0.42,
+  cacheMissInput: 2.1,
+  output: 8.4,
+  discounted: true,
+  warnings: ["minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束"],
+}
+
+const minimaxM3ShortContextPrice: Price = {
+  cacheHitInput: 0.84,
+  cacheMissInput: 4.2,
+  output: 16.8,
+  discounted: false,
+}
+
+const minimaxM3LongContextPrice: Price = {
+  cacheHitInput: 1.68,
+  cacheMissInput: 8.4,
+  output: 33.6,
+  discounted: false,
+}
+
 const grokBuildUsdPrice = {
   cacheHitInput: 0.2,
   cacheMissInput: 1,
@@ -336,6 +369,13 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelID: "qwen3.6-plus",
     modelLabel: "Qwen3.6 Plus",
     priceFor: (_time, inputTokens) => qwenPlusTieredPrice(inputTokens),
+  },
+  {
+    providerID: "minimax-cn",
+    providerLabel: "MiniMax",
+    modelID: "minimax-m3",
+    modelLabel: "M3",
+    priceFor: (time, inputTokens) => minimaxM3TieredPrice(time, inputTokens),
   },
   {
     providerID: "openrouter",
@@ -474,6 +514,11 @@ function qwenPlusTieredPrice(inputTokens: number) {
   return inputTokens <= QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS
     ? qwen36PlusShortContextPrice
     : qwen36PlusLongContextPrice
+}
+
+function minimaxM3TieredPrice(time: number, inputTokens: number) {
+  if (inputTokens > MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS) return minimaxM3LongContextPrice
+  return time < MINIMAX_M3_DISCOUNT_END_TIME ? minimaxM3ShortContextDiscountPrice : minimaxM3ShortContextPrice
 }
 
 function usdPrice(rate: number | undefined, price: Omit<Price, "discounted" | "warnings">): Price {

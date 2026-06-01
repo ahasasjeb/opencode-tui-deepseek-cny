@@ -22,11 +22,14 @@ export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 
 const orange = RGBA.fromInts(255, 135, 0)
 
+const LOW_BALANCE_CNY = 3
+const HIGH_BALANCE_CNY = 9
+
 export function balanceTone(theme: TuiPluginApi["theme"]["current"], amount: number | undefined) {
   if (amount === undefined) return theme.success
   if (amount <= 0) return theme.error
-  if (amount <= 3) return orange
-  if (amount <= 9) return theme.warning
+  if (amount <= LOW_BALANCE_CNY) return orange
+  if (amount <= HIGH_BALANCE_CNY) return theme.warning
   return theme.success
 }
 

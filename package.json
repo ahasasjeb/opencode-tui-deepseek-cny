@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "llm-cny",
-  "version": "1.0.24",
-  "description": "在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，以及 Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen 的人民币费用。",
+  "version": "1.0.25",
+  "description": "在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，以及 Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen、MiniMax M3 的人民币费用。",
   "type": "module",
   "license": "MIT",
   "author": "",
@@ -19,6 +19,7 @@
     "glm",
     "alibaba",
     "qwen",
+    "minimax",
     "cny",
     "billing"
   ],

@@ -40,6 +40,8 @@ type CodexState =
   | { status: "error"; message: string }
   | { status: "no-auth" }
 
+// Distinct from PLUGIN_NAME in version.ts: PLUGIN_NAME is the npm package name,
+// pluginID is the OpenCode plugin slot id retained for backwards compatibility.
 const pluginID = "opencode-tui-deepseek-cny"
 let versionCheckDone = false
 

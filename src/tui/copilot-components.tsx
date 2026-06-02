@@ -119,8 +119,8 @@ function ProgressBar(props: { percent: number; theme: Theme }) {
 
   const barColor = (): string | RGBA => {
     const r = remaining()
-    if (r <= 10) return props.theme.error
-    if (r <= 30) return props.theme.warning
+    if (r >= 95) return props.theme.error
+    if (r >= 80) return props.theme.warning
     return props.theme.success
   }
 

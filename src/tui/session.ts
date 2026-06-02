@@ -37,6 +37,24 @@ export function hasOpenAIOAuthProvider(
   return true
 }
 
+export function hasCopilotOAuthProvider(
+  providers: ReadonlyArray<ProviderAuthLike>,
+) {
+  const copilot = providers.find((item) => item.id === "github-copilot")
+  if (!copilot) return false
+  if (hasProviderApiKey(copilot)) return false
+  return true
+}
+
+function hasProviderApiKey(provider: ProviderAuthLike) {
+  const candidates = [
+    provider.key,
+    readString(provider.options, "apiKey"),
+    ...(provider.env?.map((name) => process.env[name]) ?? []),
+  ]
+  return candidates.some((item) => typeof item === "string" && item.trim() !== "")
+}
+
 export function hasOpenAIApiKeyProvider(providers: ReadonlyArray<ProviderAuthLike>, config?: unknown) {
   const openai = providers.find((item) => item.id === "openai")
   if (openai && hasOpenAIProviderApiKey(openai)) return true

@@ -3,6 +3,7 @@ import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@opencode-ai/plug
 import type { Message } from "@opencode-ai/sdk/v2"
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { fetchDisplayBalance } from "./balance.js"
+import { fetchCopilotUsage, type CopilotQuota } from "./copilot-usage.js"
 import { fetchCodexUsage, type CodexUsage } from "./codex-usage.js"
 import { fetchUsdCnyRate } from "./exchange-rate.js"
 import { calculateTrackedSession, supportsBalance, type BalanceProviderID } from "./pricing.js"
@@ -16,6 +17,7 @@ import {
   UpdateBanner,
 } from "./tui/components.js"
 import { CodexUsagePanel } from "./tui/codex-components.js"
+import { CopilotQuotaPanel } from "./tui/copilot-components.js"
 import { errorMessage } from "./tui/format.js"
 import { parseOptions, type Options } from "./tui/options.js"
 import { randomCodexRefreshMs } from "./tui/refresh.js"
@@ -23,6 +25,7 @@ import {
   activeTrackedProviders,
   childUsageRefreshKey,
   completedTrackedReplyKey,
+  hasCopilotOAuthProvider,
   hasOpenAIApiKeyProvider,
   hasOpenAIOAuthProvider,
   hasOpenAIUsage,
@@ -38,6 +41,12 @@ import { PLUGIN_NAME, PLUGIN_VERSION } from "./version.js"
 type CodexState =
   | { status: "idle" | "loading" }
   | { status: "ready"; usage: CodexUsage }
+  | { status: "error"; message: string }
+  | { status: "no-auth" }
+
+type CopilotState =
+  | { status: "idle" | "loading" }
+  | { status: "ready"; quota: CopilotQuota }
   | { status: "error"; message: string }
   | { status: "no-auth" }
 
@@ -68,8 +77,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const needsUsdCnyRate = createMemo(() =>
     activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai"),
   )
-  const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
-  const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
+const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
+  const copilotEnabled = createMemo(() => hasCopilotOAuthProvider(props.api.state.provider))
+  const activated = createMemo(() => hasTrackedUsage() || codexEnabled() || copilotEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(costMessages()))
   const childRefreshKey = createMemo(() =>
     childUsageRefreshKey({
@@ -85,6 +95,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
   const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)
   const [codexState, setCodexState] = createSignal<CodexState>({ status: "idle" })
+  const [copilotState, setCopilotState] = createSignal<CopilotState>({ status: "idle" })
   let updateBannerTimer: ReturnType<typeof setTimeout> | undefined
 
   const dismissUpdateBanner = () => {
@@ -182,7 +193,8 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     )
   }
 
-  let codexRequest = 0
+let codexRequest = 0
+  let copilotRequest = 0
   const clearCodexRefreshTimer = () => {
     clearTimeout(codexRefreshTimer)
     codexRefreshTimer = undefined
@@ -220,6 +232,48 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     } finally {
       if (!disposed && request === codexRequest && codexEnabled()) {
         scheduleCodexRefresh()
+      }
+    }
+  }
+
+  let copilotRefreshTimer: ReturnType<typeof setTimeout> | undefined
+
+  const clearCopilotRefreshTimer = () => {
+    clearTimeout(copilotRefreshTimer)
+    copilotRefreshTimer = undefined
+  }
+
+  const scheduleCopilotRefresh = () => {
+    if (disposed || !copilotEnabled()) return
+    copilotRefreshTimer = setTimeout(() => {
+      void refreshCopilotUsage()
+    }, randomCodexRefreshMs())
+  }
+
+  const refreshCopilotUsage = async () => {
+    clearCopilotRefreshTimer()
+    if (disposed) return
+    if (!copilotEnabled()) {
+      setCopilotState({ status: "no-auth" })
+      return
+    }
+    const request = ++copilotRequest
+    setCopilotState((prev) => (prev.status === "ready" ? prev : { status: "loading" }))
+    try {
+      const stateDir = props.api.state.path.state
+      const result = await fetchCopilotUsage(stateDir)
+      if (disposed || request !== copilotRequest) return
+      if (result.ok) {
+        setCopilotState({ status: "ready", quota: result.quota })
+      } else {
+        setCopilotState({ status: "error", message: result.message })
+      }
+    } catch (cause) {
+      if (disposed || request !== copilotRequest) return
+      setCopilotState({ status: "error", message: errorMessage(cause) })
+    } finally {
+      if (!disposed && request === copilotRequest && copilotEnabled()) {
+        scheduleCopilotRefresh()
       }
     }
   }
@@ -268,7 +322,17 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     void refreshCodexUsage()
   })
 
-  onMount(() => {
+  createEffect(() => {
+    if (!copilotEnabled()) {
+      clearCopilotRefreshTimer()
+      setCopilotState({ status: "no-auth" })
+      return
+    }
+
+    void refreshCopilotUsage()
+  })
+
+onMount(() => {
     const interval = setInterval(() => {
       if (activated()) refreshActive()
       if (needsUsdCnyRate()) refreshUsdCnyRate()
@@ -285,6 +349,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     disposed = true
     clearTimeout(updateBannerTimer)
     clearCodexRefreshTimer()
+    clearCopilotRefreshTimer()
     for (const controller of controllers.values()) {
       controller.abort()
     }
@@ -305,15 +370,17 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
       >
         <Header
           theme={props.api.theme.current}
-          canRefresh={
+canRefresh={
             (hasTrackedUsage() && activeBalanceProviders().some((item) => tokens()[item.id] !== undefined)) ||
             codexEnabled() ||
+            copilotEnabled() ||
             needsUsdCnyRate()
           }
           onRefresh={() => {
             refreshActive()
             refreshUsdCnyRate()
             void refreshCodexUsage()
+            void refreshCopilotUsage()
           }}
         />
         <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
@@ -337,6 +404,12 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
           </Show>
           <Show when={codexEnabled()}>
             <CodexUsagePanel theme={props.api.theme.current} state={codexState()} />
+            <Show when={hasTrackedUsage() || copilotEnabled()}>
+              <Divider theme={props.api.theme.current} />
+            </Show>
+          </Show>
+          <Show when={copilotEnabled()}>
+            <CopilotQuotaPanel theme={props.api.theme.current} state={copilotState()} />
             <Show when={hasTrackedUsage()}>
               <Divider theme={props.api.theme.current} />
             </Show>

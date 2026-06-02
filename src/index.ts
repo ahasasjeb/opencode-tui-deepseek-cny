@@ -47,3 +47,12 @@ export {
   type CodexUsageResult,
   type WindowLimit,
 } from "./codex-usage.js"
+export {
+  fetchCopilotUsage,
+  readCopilotOAuth,
+  normalizeCopilotPlan,
+  resolveDisplayPlan,
+  type CopilotQuota,
+  type CopilotUsageResult,
+  type QuotaSnapshot,
+} from "./copilot-usage.js"

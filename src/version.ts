@@ -1,2 +1,2 @@
 export const PLUGIN_NAME = "llm-cny"
-export const PLUGIN_VERSION = "1.0.29"
+export const PLUGIN_VERSION = "1.0.30"

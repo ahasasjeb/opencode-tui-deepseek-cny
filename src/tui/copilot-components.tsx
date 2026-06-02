@@ -87,9 +87,9 @@ function QuotaRow(props: {
   const percentRemaining = () => props.snapshot.percentRemaining
 
   const barColor = (): string | RGBA => {
-    const r = percentRemaining()
-    if (r <= 10) return props.theme.error
-    if (r <= 30) return props.theme.warning
+    const used = 100 - percentRemaining()
+    if (used > 90) return props.theme.error
+    if (used > 80) return props.theme.warning
     return props.theme.success
   }
 
@@ -118,9 +118,9 @@ function ProgressBar(props: { percent: number; theme: Theme }) {
   const empty = () => BAR_WIDTH - filled()
 
   const barColor = (): string | RGBA => {
-    const r = remaining()
-    if (r >= 95) return props.theme.error
-    if (r >= 80) return props.theme.warning
+    const used = remaining()
+    if (used > 90) return props.theme.error
+    if (used > 80) return props.theme.warning
     return props.theme.success
   }
 

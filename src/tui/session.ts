@@ -69,6 +69,13 @@ export function hasOpenAIUsage(messages: ReadonlyArray<Message>) {
   })
 }
 
+export function hasCopilotUsage(messages: ReadonlyArray<Message>) {
+  return messages.some((item) => {
+    if (item.role === "user") return item.model.providerID === "github-copilot"
+    return item.providerID === "github-copilot"
+  })
+}
+
 export function completedTrackedReplyKey(messages: ReadonlyArray<Message>) {
   return messages
     .flatMap((item) => {

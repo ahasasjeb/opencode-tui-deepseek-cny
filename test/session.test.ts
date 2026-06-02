@@ -1,6 +1,11 @@
 import type { Message } from "@opencode-ai/sdk/v2"
 import { expect, test } from "bun:test"
-import { activeTrackedProviders, hasOpenAIApiKeyProvider, hasOpenAIOAuthProvider } from "../src/tui/session.js"
+import {
+  activeTrackedProviders,
+  hasCopilotUsage,
+  hasOpenAIApiKeyProvider,
+  hasOpenAIOAuthProvider,
+} from "../src/tui/session.js"
 
 function assistantMessage(input: {
   providerID: string
@@ -13,6 +18,14 @@ function assistantMessage(input: {
     providerID: input.providerID,
     modelID: input.modelID,
     time: input.completed === undefined ? {} : { completed: input.completed },
+  } as Message
+}
+
+function userMessage(input: { providerID: string }): Message {
+  return {
+    id: `user-${input.providerID}`,
+    role: "user",
+    model: { providerID: input.providerID, modelID: "m" },
   } as Message
 }
 
@@ -113,4 +126,28 @@ test("OpenAI OAuth 模式不会启用 OpenAI 价格统计", () => {
       process.env.OPENAI_API_KEY = original
     }
   }
+})
+
+test("没有 Copilot 对话时不检测到 Copilot 额度", () => {
+  expect(hasCopilotUsage([])).toBe(false)
+  expect(
+    hasCopilotUsage([
+      assistantMessage({ providerID: "openai", modelID: "gpt-4o", completed: 1 }),
+      userMessage({ providerID: "openai" }),
+    ]),
+  ).toBe(false)
+})
+
+test("Copilot 助手回复会激活 Copilot 额度检测", () => {
+  expect(
+    hasCopilotUsage([
+      assistantMessage({ providerID: "github-copilot", modelID: "gpt-4o", completed: 1 }),
+    ]),
+  ).toBe(true)
+})
+
+test("用户消息携带 Copilot provider 也会激活", () => {
+  expect(
+    hasCopilotUsage([userMessage({ providerID: "github-copilot" })]),
+  ).toBe(true)
 })

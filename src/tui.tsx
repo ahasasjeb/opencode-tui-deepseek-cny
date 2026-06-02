@@ -26,6 +26,7 @@ import {
   childUsageRefreshKey,
   completedTrackedReplyKey,
   hasCopilotOAuthProvider,
+  hasCopilotUsage,
   hasOpenAIApiKeyProvider,
   hasOpenAIOAuthProvider,
   hasOpenAIUsage,
@@ -78,7 +79,9 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai"),
   )
   const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
-  const copilotEnabled = createMemo(() => hasCopilotOAuthProvider(props.api.state.provider))
+  const copilotEnabled = createMemo(
+    () => hasCopilotOAuthProvider(props.api.state.provider) && hasCopilotUsage(usageMessages()),
+  )
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled() || copilotEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(costMessages()))
   const childRefreshKey = createMemo(() =>

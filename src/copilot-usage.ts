@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises"
-import { homedir } from "node:os"
-import { dirname, join } from "node:path"
+import { readOAuthCredential } from "./oauth.js"
 import { isRecord } from "./utils.js"
 
 const USER_URL = "https://api.github.com/copilot_internal/user"
@@ -94,26 +92,6 @@ type AccountFile = {
   active?: Record<string, string>
 }
 
-function authCandidatePaths(stateDir: string) {
-  const candidates = new Set<string>([join(stateDir, "account.json")])
-  const stateParent = dirname(stateDir)
-  candidates.add(join(stateParent, "opencode", "account.json"))
-
-  for (const base of [
-    process.env.XDG_DATA_HOME,
-    process.env.LOCALAPPDATA,
-    process.env.APPDATA,
-    join(homedir(), ".local", "share"),
-    join(homedir(), "Library", "Application Support"),
-  ]) {
-    if (!base) continue
-    candidates.add(join(base, "opencode", "account.json"))
-    candidates.add(join(base, "opencode", "auth.json"))
-  }
-
-  return [...candidates]
-}
-
 function parseCredential(value: unknown): CopilotOAuthCredential | null {
   return parseLegacyCredential(value) ?? parseAccountCredential(value)
 }
@@ -162,19 +140,7 @@ function parseAccountEntry(entry: { credential?: { type?: string; access?: strin
 }
 
 export async function readCopilotOAuth(stateDir: string): Promise<CopilotOAuthCredential | null> {
-  const fromEnv = parseCredential(JSON.parse(process.env.OPENCODE_AUTH_CONTENT ?? "null"))
-  if (fromEnv) return fromEnv
-
-  for (const filePath of authCandidatePaths(stateDir)) {
-    try {
-      const parsed = parseCredential(JSON.parse(await readFile(filePath, "utf-8")))
-      if (parsed) return parsed
-    } catch {
-      continue
-    }
-  }
-
-  return null
+  return readOAuthCredential(stateDir, parseCredential)
 }
 
 function buildApiBaseUrl(enterpriseUrl?: string): string {

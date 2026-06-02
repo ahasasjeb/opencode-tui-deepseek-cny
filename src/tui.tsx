@@ -77,7 +77,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const needsUsdCnyRate = createMemo(() =>
     activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai"),
   )
-const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
+  const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const copilotEnabled = createMemo(() => hasCopilotOAuthProvider(props.api.state.provider))
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled() || copilotEnabled())
   const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(costMessages()))
@@ -94,6 +94,12 @@ const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.pro
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
   const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)
+  const showableUpdateVersion = createMemo(() => {
+    const version = updateVersion()
+    if (!version) return null
+    if (activated() && updateBannerDismissed()) return null
+    return version
+  })
   const [codexState, setCodexState] = createSignal<CodexState>({ status: "idle" })
   const [copilotState, setCopilotState] = createSignal<CopilotState>({ status: "idle" })
   let updateBannerTimer: ReturnType<typeof setTimeout> | undefined
@@ -193,7 +199,7 @@ const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.pro
     )
   }
 
-let codexRequest = 0
+  let codexRequest = 0
   let copilotRequest = 0
   const clearCodexRefreshTimer = () => {
     clearTimeout(codexRefreshTimer)
@@ -332,7 +338,7 @@ let codexRequest = 0
     void refreshCopilotUsage()
   })
 
-onMount(() => {
+  onMount(() => {
     const interval = setInterval(() => {
       if (activated()) refreshActive()
       if (needsUsdCnyRate()) refreshUsdCnyRate()
@@ -370,7 +376,7 @@ onMount(() => {
       >
         <Header
           theme={props.api.theme.current}
-canRefresh={
+          canRefresh={
             (hasTrackedUsage() && activeBalanceProviders().some((item) => tokens()[item.id] !== undefined)) ||
             codexEnabled() ||
             copilotEnabled() ||
@@ -383,17 +389,15 @@ canRefresh={
             void refreshCopilotUsage()
           }}
         />
-        <Show when={updateVersion() !== null && (!activated() || !updateBannerDismissed())}>
-          <Show when={updateVersion()}>
-            {(version) => (
-              <UpdateBanner
-                theme={props.api.theme.current}
-                version={version()}
-                activated={activated()}
-                onDismiss={activated() ? dismissUpdateBanner : undefined}
-              />
-            )}
-          </Show>
+        <Show when={showableUpdateVersion()}>
+          {(version) => (
+            <UpdateBanner
+              theme={props.api.theme.current}
+              version={version()}
+              activated={activated()}
+              onDismiss={activated() ? dismissUpdateBanner : undefined}
+            />
+          )}
         </Show>
         <Show when={activated()} fallback={<ActivationPrompt theme={props.api.theme.current} />}>
           <Show when={hasTrackedUsage()}>

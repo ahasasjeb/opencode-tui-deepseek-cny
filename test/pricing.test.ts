@@ -445,3 +445,199 @@ test("Grok Build 汇率未就绪时先给出提示", () => {
   expect(summary.costCny).toBe(0)
   expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
 })
+
+test("按 Anthropic Claude 美元价格转换人民币统计", () => {
+expect(priceForModel("claude-sonnet-4-6", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 2.13,
+    cacheMissInput: 21.3,
+    cacheWriteInput: 26.625,
+    cacheWrite1hInput: 42.6,
+    output: 106.5,
+    discounted: false,
+  })
+  expect(priceForModel("claude-opus-4-6", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    cacheWriteInput: 44.375,
+    cacheWrite1hInput: 71,
+    output: 177.5,
+    discounted: false,
+  })
+  expect(priceForModel("claude-opus-4-7", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    cacheWriteInput: 44.375,
+    cacheWrite1hInput: 71,
+    output: 177.5,
+    discounted: false,
+  })
+  expect(priceForModel("claude-opus-4-8", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    cacheWriteInput: 44.375,
+    cacheWrite1hInput: 71,
+    output: 177.5,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "anthropic",
+        modelID: "claude-sonnet-4-6",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "anthropic",
+        modelID: "claude-opus-4-8",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(342.93)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["claude-sonnet-4-6", "claude-opus-4-8"])
+})
+
+test("Anthropic cache write 按 5 分钟写入价统计", () => {
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "anthropic",
+        modelID: "claude-sonnet-4-6",
+        tokens: {
+          input: 0,
+          output: 0,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 1_000_000,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.costCny).toBe(26.625)
+  expect(summary.models[0]?.cacheMissInputTokens).toBe(1_000_000)
+  expect(summary.models[0]?.cacheHitInputTokens).toBe(0)
+  expect(summary.cacheWrite1hCostCny).toBe(42.6)
+})
+
+test("Anthropic cache write 1h 估算仅对 Claude 模型有值", () => {
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "anthropic",
+        modelID: "claude-opus-4-8",
+        tokens: {
+          input: 0,
+          output: 500_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 1_000_000,
+          },
+        },
+      },
+      {
+        providerID: "deepseek",
+        modelID: "deepseek-v4-pro",
+        tokens: {
+          input: 100_000,
+          output: 50_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.cacheWrite1hCostCny).toBe(71)
+})
+
+test("按 OpenAI API 美元价格转换人民币统计并处理长上下文", () => {
+  expect(priceForModel("gpt-5.5", Date.now(), 272_000, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    output: 213,
+    discounted: false,
+  })
+  expect(priceForModel("gpt-5.5", Date.now(), 272_001, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 7.1,
+    cacheMissInput: 71,
+    output: 319.5,
+    discounted: false,
+  })
+  expect(priceForModel("gpt-5.4", Date.now(), 272_001, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    output: 159.75,
+    discounted: false,
+  })
+  expect(priceForModel("gpt-5.4-mini", Date.now(), 272_001, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 0.5325,
+    cacheMissInput: 5.325,
+    output: 31.95,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "openai",
+        modelID: "gpt-5.4",
+        tokens: {
+          input: 272_001,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "openai",
+        modelID: "gpt-5.4-mini",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(207.213536)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["gpt-5.4", "gpt-5.4-mini"])
+})

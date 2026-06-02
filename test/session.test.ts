@@ -1,6 +1,6 @@
 import type { Message } from "@opencode-ai/sdk/v2"
 import { expect, test } from "bun:test"
-import { activeTrackedProviders, hasOpenAIOAuthProvider } from "../src/tui/session.js"
+import { activeTrackedProviders, hasOpenAIApiKeyProvider, hasOpenAIOAuthProvider } from "../src/tui/session.js"
 
 function assistantMessage(input: {
   providerID: string
@@ -82,4 +82,35 @@ test("OpenAI API Key 模式不会激活 Codex 面板", () => {
       },
     ]),
   ).toBe(false)
+})
+
+test("OpenAI API Key 模式会启用 OpenAI 价格统计", () => {
+  expect(
+    hasOpenAIApiKeyProvider([
+      {
+        id: "openai",
+        key: "sk-test",
+      },
+    ]),
+  ).toBe(true)
+})
+
+test("OpenAI OAuth 模式不会启用 OpenAI 价格统计", () => {
+  const original = process.env.OPENAI_API_KEY
+  process.env.OPENAI_API_KEY = ""
+  try {
+    expect(
+      hasOpenAIApiKeyProvider([
+        {
+          id: "openai",
+        },
+      ]),
+    ).toBe(false)
+  } finally {
+    if (original === undefined) {
+      delete process.env.OPENAI_API_KEY
+    } else {
+      process.env.OPENAI_API_KEY = original
+    }
+  }
 })

@@ -23,6 +23,7 @@ import {
   activeTrackedProviders,
   childUsageRefreshKey,
   completedTrackedReplyKey,
+  hasOpenAIApiKeyProvider,
   hasOpenAIOAuthProvider,
   hasOpenAIUsage,
   isSubagentSession,
@@ -56,14 +57,20 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     localChildSessionIDs().flatMap((sessionID) => props.api.state.session.messages(sessionID)),
   )
   const usageMessages = createMemo(() => mergeMessages(messages(), localChildMessages(), remoteChildMessages()))
+  const openAIApiKeyEnabled = createMemo(() => hasOpenAIApiKeyProvider(props.api.state.provider, props.api.state.config))
+  const costMessages = createMemo(() =>
+    openAIApiKeyEnabled() ? usageMessages() : usageMessages().filter((item) => item.role !== "assistant" || item.providerID !== "openai"),
+  )
   const tokens = createMemo(() => providerTokens(props.api))
-  const activeProviders = createMemo(() => activeTrackedProviders(usageMessages()))
+  const activeProviders = createMemo(() => activeTrackedProviders(costMessages()))
   const activeBalanceProviders = createMemo(() => activeProviders().filter(supportsBalance))
   const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
-  const needsUsdCnyRate = createMemo(() => activeProviders().some((item) => item.id === "openrouter" || item.id === "xai"))
+  const needsUsdCnyRate = createMemo(() =>
+    activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai"),
+  )
   const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const activated = createMemo(() => hasTrackedUsage() || codexEnabled())
-  const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(usageMessages()))
+  const completedTrackedReplies = createMemo(() => completedTrackedReplyKey(costMessages()))
   const childRefreshKey = createMemo(() =>
     childUsageRefreshKey({
       sessionID: props.session_id,
@@ -73,7 +80,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
     }),
   )
   const [usdCnyRate, setUsdCnyRate] = createSignal<number | undefined>()
-  const summary = createMemo(() => calculateTrackedSession(usageRecords(usageMessages()), { usdCnyRate: usdCnyRate() }))
+  const summary = createMemo(() => calculateTrackedSession(usageRecords(costMessages()), { usdCnyRate: usdCnyRate() }))
   const visible = createMemo(() => props.options.showWhenEmpty || activated())
   const [updateVersion, setUpdateVersion] = createSignal<string | null>(null)
   const [updateBannerDismissed, setUpdateBannerDismissed] = createSignal(false)

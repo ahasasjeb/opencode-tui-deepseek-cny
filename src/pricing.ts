@@ -12,6 +12,10 @@ export type MiniMaxChinaModelID = "minimax-m3"
 
 export type GrokBuildModelID = "grok-build-0.1" | "x-ai/grok-build-0.1"
 
+export type AnthropicModelID = "claude-sonnet-4-6" | "claude-opus-4-6" | "claude-opus-4-7" | "claude-opus-4-8"
+
+export type OpenAIModelID = "gpt-5.5" | "gpt-5.4" | "gpt-5.4-mini"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -68,6 +72,18 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "anthropic",
+    label: "Anthropic",
+    env: [],
+    balance: false,
+  },
+  {
+    id: "openai",
+    label: "OpenAI API",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
@@ -79,6 +95,8 @@ export type TrackedModelID =
   | AlibabaChinaModelID
   | MiniMaxChinaModelID
   | GrokBuildModelID
+  | AnthropicModelID
+  | OpenAIModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -86,6 +104,8 @@ export type BalanceProviderID = BalanceTrackedProvider["id"]
 type Price = {
   cacheHitInput: number
   cacheMissInput: number
+  cacheWriteInput?: number
+  cacheWrite1hInput?: number
   output: number
   discounted: boolean
   warnings?: readonly string[]
@@ -122,6 +142,7 @@ export type ModelSubtotal = {
   outputTokens: number
   reasoningTokens: number
   costCny: number
+  cacheWrite1hCostCny: number
   discountedTurns: number
   warnings: string[]
 }
@@ -133,6 +154,7 @@ export type SessionCostSummary = {
   outputTokens: number
   reasoningTokens: number
   costCny: number
+  cacheWrite1hCostCny: number
   models: ModelSubtotal[]
 }
 
@@ -151,6 +173,7 @@ export type PricingOptions = {
 const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
 const MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS = 512_000
+const OPENAI_LONG_CONTEXT_THRESHOLD_TOKENS = 272_000
 const MINIMAX_M3_DISCOUNT_END_TIME = Date.parse("2026-06-08T00:00:00+08:00")
 const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
 const MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING = "minimax-m3 512K 到 1M 价格高昂警告"
@@ -293,6 +316,40 @@ const grokBuildUsdPrice = {
   output: 2,
 }
 
+const claudeSonnet46UsdPrice = {
+  cacheHitInput: 0.3,
+  cacheMissInput: 3,
+  cacheWriteInput: 3.75,
+  cacheWrite1hInput: 6,
+  output: 15,
+}
+
+const claudeOpusUsdPrice = {
+  cacheHitInput: 0.5,
+  cacheMissInput: 5,
+  cacheWriteInput: 6.25,
+  cacheWrite1hInput: 10,
+  output: 25,
+}
+
+const gpt55UsdPrice = {
+  cacheHitInput: 0.5,
+  cacheMissInput: 5,
+  output: 30,
+}
+
+const gpt54UsdPrice = {
+  cacheHitInput: 0.25,
+  cacheMissInput: 2.5,
+  output: 15,
+}
+
+const gpt54MiniUsdPrice = {
+  cacheHitInput: 0.075,
+  cacheMissInput: 0.75,
+  output: 4.5,
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -407,6 +464,55 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "x-ai/grok-build-0.1",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
   },
+  {
+    providerID: "anthropic",
+    providerLabel: "Anthropic",
+    modelID: "claude-sonnet-4-6",
+    modelLabel: "Claude Sonnet 4.6",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeSonnet46UsdPrice),
+  },
+  {
+    providerID: "anthropic",
+    providerLabel: "Anthropic",
+    modelID: "claude-opus-4-6",
+    modelLabel: "Claude Opus 4.6",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
+  },
+  {
+    providerID: "anthropic",
+    providerLabel: "Anthropic",
+    modelID: "claude-opus-4-7",
+    modelLabel: "Claude Opus 4.7",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
+  },
+  {
+    providerID: "anthropic",
+    providerLabel: "Anthropic",
+    modelID: "claude-opus-4-8",
+    modelLabel: "Claude Opus 4.8",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
+  },
+  {
+    providerID: "openai",
+    providerLabel: "OpenAI API",
+    modelID: "gpt-5.5",
+    modelLabel: "GPT-5.5",
+    priceFor: (_time, inputTokens, options) => openAILongContextPrice(inputTokens, options, gpt55UsdPrice),
+  },
+  {
+    providerID: "openai",
+    providerLabel: "OpenAI API",
+    modelID: "gpt-5.4",
+    modelLabel: "GPT-5.4",
+    priceFor: (_time, inputTokens, options) => openAILongContextPrice(inputTokens, options, gpt54UsdPrice),
+  },
+  {
+    providerID: "openai",
+    providerLabel: "OpenAI API",
+    modelID: "gpt-5.4-mini",
+    modelLabel: "GPT-5.4 mini",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, gpt54MiniUsdPrice),
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
@@ -439,6 +545,7 @@ export function calculateTrackedSession(records: readonly UsageRecord[], options
     outputTokens: models.reduce((sum, item) => sum + item.outputTokens, 0),
     reasoningTokens: models.reduce((sum, item) => sum + item.reasoningTokens, 0),
     costCny: roundMoney(models.reduce((sum, item) => sum + item.costCny, 0)),
+    cacheWrite1hCostCny: roundMoney(models.reduce((sum, item) => sum + item.cacheWrite1hCostCny, 0)),
     models,
   }
 }
@@ -453,10 +560,13 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[], optio
     .reduce<ModelSubtotal>(
       (sum, item) => {
         const cacheHitInputTokens = safe(item.tokens.cache.read)
-        const cacheMissInputTokens = safe(item.tokens.input) + safe(item.tokens.cache.write)
+        const cacheWriteInputTokens = safe(item.tokens.cache.write)
+        const cacheMissInputTokens = safe(item.tokens.input) + cacheWriteInputTokens
         const inputTokens = cacheHitInputTokens + cacheMissInputTokens
         const price = entry.priceFor(item.time?.completed ?? item.time?.created ?? Date.now(), inputTokens, options)
         const outputTokens = safe(item.tokens.output) + safe(item.tokens.reasoning)
+        const cacheWriteInputPrice = price.cacheWriteInput ?? price.cacheMissInput
+        const cacheWrite1hInputPrice = price.cacheWrite1hInput ?? price.cacheWriteInput ?? price.cacheMissInput
 
         return {
           providerID: entry.providerID,
@@ -471,9 +581,14 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[], optio
           costCny: roundMoney(
             sum.costCny +
             (cacheHitInputTokens * price.cacheHitInput +
-              cacheMissInputTokens * price.cacheMissInput +
+              safe(item.tokens.input) * price.cacheMissInput +
+              cacheWriteInputTokens * cacheWriteInputPrice +
               outputTokens * price.output) /
             1_000_000,
+          ),
+          cacheWrite1hCostCny: roundMoney(
+            sum.cacheWrite1hCostCny +
+            cacheWriteInputTokens * cacheWrite1hInputPrice / 1_000_000,
           ),
           discountedTurns: sum.discountedTurns + (price.discounted ? 1 : 0),
           warnings: unique([...sum.warnings, ...(price.warnings ?? [])]),
@@ -490,6 +605,7 @@ function subtotal(entry: ModelPriceEntry, records: readonly UsageRecord[], optio
         outputTokens: 0,
         reasoningTokens: 0,
         costCny: 0,
+        cacheWrite1hCostCny: 0,
         discountedTurns: 0,
         warnings: [],
       },
@@ -523,6 +639,19 @@ function minimaxM3TieredPrice(time: number, inputTokens: number) {
   return time < MINIMAX_M3_DISCOUNT_END_TIME ? minimaxM3ShortContextDiscountPrice : minimaxM3ShortContextPrice
 }
 
+function openAILongContextPrice(
+  inputTokens: number,
+  options: PricingOptions,
+  price: Omit<Price, "discounted" | "warnings">,
+) {
+  if (inputTokens <= OPENAI_LONG_CONTEXT_THRESHOLD_TOKENS) return usdPrice(options.usdCnyRate, price)
+  return usdPrice(options.usdCnyRate, {
+    cacheHitInput: price.cacheHitInput * 2,
+    cacheMissInput: price.cacheMissInput * 2,
+    output: price.output * 1.5,
+  })
+}
+
 function usdPrice(rate: number | undefined, price: Omit<Price, "discounted" | "warnings">): Price {
   if (!Number.isFinite(rate) || rate === undefined || rate <= 0) {
     return {
@@ -534,9 +663,13 @@ function usdPrice(rate: number | undefined, price: Omit<Price, "discounted" | "w
     }
   }
 
+const cacheWriteInput = price.cacheWriteInput !== undefined ? roundMoney(price.cacheWriteInput * rate) : undefined
+  const cacheWrite1hInput = price.cacheWrite1hInput !== undefined ? roundMoney(price.cacheWrite1hInput * rate) : undefined
   return {
     cacheHitInput: roundMoney(price.cacheHitInput * rate),
     cacheMissInput: roundMoney(price.cacheMissInput * rate),
+    cacheWriteInput,
+    cacheWrite1hInput,
     output: roundMoney(price.output * rate),
     discounted: false,
   }

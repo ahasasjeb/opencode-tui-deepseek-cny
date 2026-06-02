@@ -3,6 +3,14 @@ import type { Message, Part, Session } from "@opencode-ai/sdk/v2"
 import { BALANCE_TRACKED_PROVIDERS, TRACKED_PROVIDERS, trackedModel, type BalanceProviderID, type TrackedProviderID } from "../pricing.js"
 import { isRecord } from "../utils.js"
 
+type ProviderAuthLike = {
+  id: string
+  source?: string
+  key?: string | null | undefined
+  env?: readonly string[]
+  options?: unknown
+}
+
 export function providerTokens(api: TuiPluginApi) {
   const result: Partial<Record<BalanceProviderID, string>> = {}
   for (const provider of BALANCE_TRACKED_PROVIDERS) {
@@ -21,13 +29,19 @@ export function activeTrackedProviders(messages: ReadonlyArray<Message>) {
 }
 
 export function hasOpenAIOAuthProvider(
-  providers: ReadonlyArray<{ id: string; source?: string; key?: string | null | undefined }>,
+  providers: ReadonlyArray<ProviderAuthLike>,
 ) {
   const openai = providers.find((item) => item.id === "openai")
   if (!openai) return false
-  if (openai.source === "env" && openai.key) return false
-  if (openai.key?.startsWith("sk-")) return false
+  if (hasOpenAIProviderApiKey(openai)) return false
   return true
+}
+
+export function hasOpenAIApiKeyProvider(providers: ReadonlyArray<ProviderAuthLike>, config?: unknown) {
+  const openai = providers.find((item) => item.id === "openai")
+  if (openai && hasOpenAIProviderApiKey(openai)) return true
+  const configApiKey = readProviderConfigString(config, "openai", "apiKey")
+  return typeof configApiKey === "string" && configApiKey.trim() !== ""
 }
 
 export function hasOpenAIUsage(messages: ReadonlyArray<Message>) {
@@ -116,12 +130,16 @@ function findProviderApiKey(api: TuiPluginApi, tracked: (typeof BALANCE_TRACKED_
 }
 
 function readProviderConfigApiKey(config: unknown, providerID: BalanceProviderID) {
+  return readProviderConfigString(config, providerID, "apiKey")
+}
+
+function readProviderConfigString(config: unknown, providerID: string, key: string) {
   if (!isRecord(config)) return undefined
   if (!isRecord(config.provider)) return undefined
   const provider = config.provider[providerID]
   if (!isRecord(provider)) return undefined
   if (!isRecord(provider.options)) return undefined
-  return readString(provider.options, "apiKey")
+  return readString(provider.options, key)
 }
 
 function taskChildSessionID(part: Part) {
@@ -133,6 +151,16 @@ function taskChildSessionID(part: Part) {
 function readString(value: unknown, key: string) {
   if (!isRecord(value)) return undefined
   return typeof value[key] === "string" ? value[key] : undefined
+}
+
+function hasOpenAIProviderApiKey(provider: ProviderAuthLike) {
+  const candidates = [
+    provider.key,
+    readString(provider.options, "apiKey"),
+    ...(provider.env?.map((name) => process.env[name]) ?? []),
+  ]
+
+  return candidates.some((item) => typeof item === "string" && item.trim() !== "")
 }
 
 function completedTrackedModel(message: Message) {

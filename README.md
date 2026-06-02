@@ -1,6 +1,6 @@
 # llm-cny
 
-在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen、MiniMax M3、OpenRouter/xAI Grok Build 的人民币费用，以及 Codex 限额。
+在 OpenCode TUI 右侧栏显示 DeepSeek V4、moonshot China 的人民币费用和账户余额，Xiaomi MiMo、ZhipuAI GLM、Alibaba Cloud Qwen、MiniMax M3、OpenRouter/xAI Grok Build、Anthropic Claude 和 OpenAI API Key 模式下 GPT 的人民币费用，以及 Codex 限额。
 
 ## 功能
 
@@ -11,6 +11,8 @@
 - 统计 `alibaba-cn` 提供商下的 `qwen3.7-max`、`qwen3.6-plus`，按上下文长度和当前优惠计费，仅统计费用，不查余额。
 - 统计 `minimax-cn` 提供商下的 `minimax-m3`，按上下文长度和 2026-06-08 00:00 前特惠计费，仅统计费用，不查余额。
 - 统计 `openrouter` 或 `xai` 提供商下的 `grok-build-0.1`、`x-ai/grok-build-0.1`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
+- 统计 `anthropic` 提供商下的 `claude-sonnet-4-6`、`claude-opus-4-6`、`claude-opus-4-7`、`claude-opus-4-8`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
+- 统计 API Key 模式下 `openai` 提供商的 `gpt-5.5`、`gpt-5.4`、`gpt-5.4-mini`，后台获取 USD/CNY 汇率并换算为人民币；OpenAI OAuth 登录模式不显示价格，只显示 Codex 限额。
 - 检测 `openai` provider 的 OAuth 登录状态并显示 Codex 限额。
 - 基于当前 session 的 assistant 消息 token 用量重新计算人民币费用。
 - 区分缓存命中输入、缓存未命中输入、输出 token；推理 token 按输出价格计费。
@@ -50,11 +52,19 @@
 | minimax-m3 | <= 512K，2026-06-08 00:00 起 | 0.84 元 | 4.2 元 | 16.8 元 |
 | minimax-m3 | > 512K 且 <= 1M | 1.68 元 | 8.4 元 | 33.6 元 |
 | grok-build-0.1 / x-ai/grok-build-0.1 | USD/CNY 汇率换算 | 0.2 美元 | 1 美元 | 2 美元 |
+| claude-sonnet-4-6 | USD/CNY 汇率换算，缓存写入按 5m 价 3.75 美元 | 0.3 美元 | 3 美元 | 15 美元 |
+| claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | USD/CNY 汇率换算，缓存写入按 5m 价 6.25 美元 | 0.5 美元 | 5 美元 | 25 美元 |
+| gpt-5.5 | USD/CNY 汇率换算，<= 272K 输入 | 0.5 美元 | 5 美元 | 30 美元 |
+| gpt-5.5 | USD/CNY 汇率换算，> 272K 输入 | 1 美元 | 10 美元 | 45 美元 |
+| gpt-5.4 | USD/CNY 汇率换算，<= 272K 输入 | 0.25 美元 | 2.5 美元 | 15 美元 |
+| gpt-5.4 | USD/CNY 汇率换算，> 272K 输入 | 0.5 美元 | 5 美元 | 22.5 美元 |
+| gpt-5.4-mini | USD/CNY 汇率换算 | 0.075 美元 | 0.75 美元 | 4.5 美元 |
 
 ZhipuAI 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，32K 及以上走高档。
 qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间。qwen3.6-plus 超过 256K 上下文会在 TUI 中提示高价档。多轮对话后缓存命中为 0 时，TUI 会显示通用价格警告。
 minimax-m3 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，512K 以上走高档并提示价格高昂；低档限时五折特惠将于 2026-06-08 00:00:00 +08:00 结束。
 Grok Build 价格单位为美元 / 百万 tokens，插件会异步请求 `https://huilv.lzy1.fun/api/huilv` 的 USD/CNY 汇率；成功后自动换算为人民币计费，未获取到汇率前会先显示等待提示。
+Anthropic 和 OpenAI API 价格单位同样为美元 / 百万 tokens，并复用 USD/CNY 汇率换算；OpenCode 默认给 Anthropic 使用 5 分钟 prompt cache，插件因此将 Anthropic `cache.write` 按 5m 缓存写入价计费。当前 OpenCode TUI 消息只暴露汇总后的 `cache.write`，没有暴露 5m/1h 细分，因此如果未来用户自定义 1h cache TTL，插件无法从现有消息结构中区分。GPT-5.5 和 GPT-5.4 按本次请求的缓存命中输入与缓存未命中输入之和判断，超过 272K 输入 token 时，输入价格按 2 倍、输出价格按 1.5 倍计费。OpenAI OAuth 登录模式用于 Codex 限额展示，不纳入 OpenAI API 价格统计；只有检测到 OpenAI API Key 时才显示 OpenAI 模型价格。
 
 ## 安装
 

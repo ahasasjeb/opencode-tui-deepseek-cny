@@ -50,6 +50,10 @@ export function UpdateBanner(props: {
 }
 
 export function Summary(props: { theme: Theme; summary: SessionCostSummary; title?: string }) {
+  const anthropicModels = () => props.summary.models.filter((item) => item.providerID === "anthropic")
+  const cacheWrite1hTotal = () => props.summary.cacheWrite1hCostCny
+  const hasAnthropicCacheWrite = () => anthropicModels().some((item) => item.cacheWrite1hCostCny > 0)
+
   return (
     <box gap={1}>
       <MetricRow theme={props.theme} label="费用" value={formatMoney(props.summary.costCny)} strong />
@@ -60,6 +64,11 @@ export function Summary(props: { theme: Theme; summary: SessionCostSummary; titl
       <text fg={props.theme.textMuted}>
         输出 {formatTokens(props.summary.outputTokens)} · 推理 {formatTokens(props.summary.reasoningTokens)}
       </text>
+      <Show when={hasAnthropicCacheWrite()}>
+        <text fg={props.theme.textMuted}>
+          若 Claude 用 1h 缓存写入: +{formatMoney(cacheWrite1hTotal())}（未计入总费用）
+        </text>
+      </Show>
       <For each={props.summary.models}>
         {(item) => (
           <box>
@@ -86,7 +95,8 @@ export function ActivationPrompt(props: { theme: Theme }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
-        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI、Alibaba Cloud、OpenRouter 或 xAI 模型返回一次消息后激活
+        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI、Alibaba Cloud、OpenRouter、xAI、Anthropic 或 OpenAI API Key
+        模型返回一次消息后激活
       </text>
     </box>
   )

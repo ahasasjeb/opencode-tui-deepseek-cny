@@ -22,6 +22,7 @@ type TrackedProviderEntry = {
   env: readonly string[]
   balance: boolean
 }
+//必须与 https://models.dev/api.json 严格对应，包括空格等细节，以确保正确匹配模型和价格
 
 export const TRACKED_PROVIDERS = [
   {
@@ -419,29 +420,22 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     providerID: "alibaba-cn",
     providerLabel: "Alibaba Cloud",
     modelID: "qwen3.7-max",
-    modelLabel: "Qwen3.7 Max",
+    modelLabel: "qwen3.7-max",
     priceFor: () => qwen37MaxDiscountPrice,
   },
   {
     providerID: "alibaba-cn",
     providerLabel: "Alibaba Cloud",
     modelID: "qwen3.6-plus",
-    modelLabel: "Qwen3.6 Plus",
+    modelLabel: "qwen3.6-plus",
     priceFor: (_time, inputTokens) => qwenPlusTieredPrice(inputTokens),
   },
   {
     providerID: "minimax-cn",
     providerLabel: "MiniMax",
     modelID: "minimax-m3",
-    modelLabel: "M3",
+    modelLabel: "MiniMax-M3",
     priceFor: (time, inputTokens) => minimaxM3TieredPrice(time, inputTokens),
-  },
-  {
-    providerID: "openrouter",
-    providerLabel: "OpenRouter",
-    modelID: "grok-build-0.1",
-    modelLabel: "Grok Build 0.1",
-    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
   },
   {
     providerID: "openrouter",
@@ -454,7 +448,7 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     providerID: "xai",
     providerLabel: "xAI",
     modelID: "grok-build-0.1",
-    modelLabel: "Grok Build 0.1",
+    modelLabel: "grok-build-0.1",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
   },
   {
@@ -468,28 +462,28 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     providerID: "anthropic",
     providerLabel: "Anthropic",
     modelID: "claude-sonnet-4-6",
-    modelLabel: "Claude Sonnet 4.6",
+    modelLabel: "claude-sonnet-4-6",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeSonnet46UsdPrice),
   },
   {
     providerID: "anthropic",
     providerLabel: "Anthropic",
     modelID: "claude-opus-4-6",
-    modelLabel: "Claude Opus 4.6",
+    modelLabel: "claude-opus-4-6",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
   },
   {
     providerID: "anthropic",
     providerLabel: "Anthropic",
     modelID: "claude-opus-4-7",
-    modelLabel: "Claude Opus 4.7",
+    modelLabel: "claude-opus-4-7",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
   },
   {
     providerID: "anthropic",
     providerLabel: "Anthropic",
     modelID: "claude-opus-4-8",
-    modelLabel: "Claude Opus 4.8",
+    modelLabel: "claude-opus-4-8",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, claudeOpusUsdPrice),
   },
   {
@@ -663,7 +657,7 @@ function usdPrice(rate: number | undefined, price: Omit<Price, "discounted" | "w
     }
   }
 
-const cacheWriteInput = price.cacheWriteInput !== undefined ? roundMoney(price.cacheWriteInput * rate) : undefined
+  const cacheWriteInput = price.cacheWriteInput !== undefined ? roundMoney(price.cacheWriteInput * rate) : undefined
   const cacheWrite1hInput = price.cacheWrite1hInput !== undefined ? roundMoney(price.cacheWrite1hInput * rate) : undefined
   return {
     cacheHitInput: roundMoney(price.cacheHitInput * rate),

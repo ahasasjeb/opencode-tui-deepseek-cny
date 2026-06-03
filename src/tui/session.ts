@@ -64,15 +64,15 @@ export function hasOpenAIApiKeyProvider(providers: ReadonlyArray<ProviderAuthLik
 
 export function hasOpenAIUsage(messages: ReadonlyArray<Message>) {
   return messages.some((item) => {
-    if (item.role === "user") return item.model.providerID === "openai"
-    return item.providerID === "openai"
+    if (item.role === "user") return item.model.providerID.toLowerCase() === "openai"
+    return item.providerID.toLowerCase() === "openai"
   })
 }
 
 export function hasCopilotUsage(messages: ReadonlyArray<Message>) {
   return messages.some((item) => {
-    if (item.role === "user") return item.model.providerID === "github-copilot"
-    return item.providerID === "github-copilot"
+    if (item.role === "user") return item.model.providerID.toLowerCase() === "github-copilot"
+    return item.providerID.toLowerCase() === "github-copilot"
   })
 }
 
@@ -91,8 +91,8 @@ export function usageRecords(messages: ReadonlyArray<Message>) {
     if (item.role !== "assistant") return []
     return [
       {
-        providerID: item.providerID,
-        modelID: item.modelID,
+        providerID: item.providerID.toLowerCase(),
+        modelID: item.modelID.toLowerCase(),
         time: item.time,
         tokens: item.tokens,
       },
@@ -191,5 +191,5 @@ function hasOpenAIProviderApiKey(provider: ProviderAuthLike) {
 function completedTrackedModel(message: Message) {
   if (message.role !== "assistant") return undefined
   if (!("completed" in message.time) || message.time.completed === undefined) return undefined
-  return trackedModel(message.providerID, message.modelID)
+  return trackedModel(message.providerID.toLowerCase(), message.modelID.toLowerCase())
 }

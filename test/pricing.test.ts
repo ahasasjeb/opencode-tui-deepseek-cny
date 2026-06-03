@@ -429,7 +429,7 @@ test("Grok Build 汇率未就绪时先给出提示", () => {
   const summary = calculateTrackedSession([
     {
       providerID: "openrouter",
-      modelID: "grok-build-0.1",
+      modelID: "x-ai/grok-build-0.1",
       tokens: {
         input: 1_000_000,
         output: 1_000_000,

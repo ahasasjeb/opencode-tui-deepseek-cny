@@ -95,7 +95,7 @@ export function ActivationPrompt(props: { theme: Theme }) {
   return (
     <box gap={1}>
       <text fg={props.theme.textMuted} wrapMode="word">
-        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI、Alibaba Cloud、OpenRouter、xAI、Anthropic、OpenAI API Key 或 GitHub Copilot OAuth
+        使用 DeepSeek、moonshot China、Xiaomi MiMo、ZhipuAI、Alibaba Cloud、xAI、Anthropic、OpenAI API Key 或 GitHub Copilot OAuth
         模型返回一次消息后激活
       </text>
     </box>

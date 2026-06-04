@@ -20,6 +20,8 @@ export type GoogleVertexModelID = "gemini-3.5-flash"
 
 export type GoogleModelID = "gemini-3.5-flash"
 
+export type TencentTokenHubModelID = "hy3-preview"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -101,6 +103,12 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "tencent-tokenhub",
+    label: "Tencent TokenHub",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
@@ -116,6 +124,7 @@ export type TrackedModelID =
   | OpenAIModelID
   | GoogleVertexModelID
   | GoogleModelID
+  | TencentTokenHubModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -193,6 +202,8 @@ const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
 const MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS = 512_000
 const OPENAI_LONG_CONTEXT_THRESHOLD_TOKENS = 272_000
+const HY3_PREVIEW_SHORT_CONTEXT_THRESHOLD_TOKENS = 16_000
+const HY3_PREVIEW_MEDIUM_CONTEXT_THRESHOLD_TOKENS = 32_000
 const MINIMAX_M3_DISCOUNT_END_TIME = Date.parse("2026-06-08T00:00:00+08:00")
 const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
 const MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING = "minimax-m3 512K 到 1M 价格高昂警告"
@@ -375,6 +386,27 @@ const gemini35FlashUsdPrice = {
   output: 9,
 }
 
+const hy3PreviewShortContextPrice: Price = {
+  cacheHitInput: 0.4,
+  cacheMissInput: 1.2,
+  output: 4,
+  discounted: false,
+}
+
+const hy3PreviewMediumContextPrice: Price = {
+  cacheHitInput: 0.6,
+  cacheMissInput: 1.6,
+  output: 6.4,
+  discounted: false,
+}
+
+const hy3PreviewLongContextPrice: Price = {
+  cacheHitInput: 0.8,
+  cacheMissInput: 2,
+  output: 8,
+  discounted: false,
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -545,6 +577,13 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "Gemini 3.5 Flash",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, gemini35FlashUsdPrice),
   },
+  {
+    providerID: "tencent-tokenhub",
+    providerLabel: "Tencent TokenHub",
+    modelID: "hy3-preview",
+    modelLabel: "Hy3 Preview",
+    priceFor: (_time, inputTokens) => hy3PreviewTieredPrice(inputTokens),
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
@@ -561,6 +600,7 @@ export function priceForModel(modelID: TrackedModelID, time = Date.now(), inputT
   if (modelID === "gemini-3.5-flash") {
     return MODEL_PRICES.find((item) => item.modelID === modelID && item.providerID === "google")!.priceFor(time, inputTokens, options)
   }
+  if (modelID === "hy3-preview") return hy3PreviewTieredPrice(inputTokens)
   return MODEL_PRICES.find((item) => item.modelID === modelID)!.priceFor(time, inputTokens, options)
 }
 
@@ -672,6 +712,12 @@ function qwenPlusTieredPrice(inputTokens: number) {
 function minimaxM3TieredPrice(time: number, inputTokens: number) {
   if (inputTokens > MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS) return minimaxM3LongContextPrice
   return time < MINIMAX_M3_DISCOUNT_END_TIME ? minimaxM3ShortContextDiscountPrice : minimaxM3ShortContextPrice
+}
+
+function hy3PreviewTieredPrice(inputTokens: number) {
+  if (inputTokens < HY3_PREVIEW_SHORT_CONTEXT_THRESHOLD_TOKENS) return hy3PreviewShortContextPrice
+  if (inputTokens < HY3_PREVIEW_MEDIUM_CONTEXT_THRESHOLD_TOKENS) return hy3PreviewMediumContextPrice
+  return hy3PreviewLongContextPrice
 }
 
 function openAILongContextPrice(

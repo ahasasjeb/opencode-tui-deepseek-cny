@@ -711,3 +711,65 @@ test("按 OpenAI API 美元价格转换人民币统计并处理长上下文", ()
   expect(summary.costCny).toBe(207.213536)
   expect(summary.models.map((item) => item.modelID)).toEqual(["gpt-5.4", "gpt-5.4-mini"])
 })
+
+test("按 Tencent TokenHub hy3-preview 阶梯人民币价格统计", () => {
+  expect(priceForModel("hy3-preview", Date.now(), 15_999)).toEqual({
+    cacheHitInput: 0.4,
+    cacheMissInput: 1.2,
+    output: 4,
+    discounted: false,
+  })
+  expect(priceForModel("hy3-preview", Date.now(), 16_000)).toEqual({
+    cacheHitInput: 0.6,
+    cacheMissInput: 1.6,
+    output: 6.4,
+    discounted: false,
+  })
+  expect(priceForModel("hy3-preview", Date.now(), 31_999)).toEqual({
+    cacheHitInput: 0.6,
+    cacheMissInput: 1.6,
+    output: 6.4,
+    discounted: false,
+  })
+  expect(priceForModel("hy3-preview", Date.now(), 32_000)).toEqual({
+    cacheHitInput: 0.8,
+    cacheMissInput: 2,
+    output: 8,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession([
+    {
+      providerID: "tencent-tokenhub",
+      modelID: "hy3-preview",
+      tokens: {
+        input: 1_000_000,
+        output: 0,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "tencent-tokenhub",
+      modelID: "hy3-preview",
+      tokens: {
+        input: 0,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(6)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["hy3-preview"])
+  expect(summary.models[0]?.providerLabel).toBe("Tencent TokenHub")
+})

@@ -13,6 +13,7 @@
 - 统计 `openrouter` 或 `xai` 提供商下的 `grok-build-0.1`、`x-ai/grok-build-0.1`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 统计 `anthropic` 提供商下的 `claude-sonnet-4-6`、`claude-opus-4-6`、`claude-opus-4-7`、`claude-opus-4-8`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 统计 `google` 或 `google-vertex` 提供商下的 `gemini-3.5-flash`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
+- 统计 `tencent-tokenhub` 提供商下的 `hy3-preview`，按输入长度阶梯计费，仅统计费用，不查余额。
 - 统计 API Key 模式下 `openai` 提供商的 `gpt-5.5`、`gpt-5.4`、`gpt-5.4-mini`，后台获取 USD/CNY 汇率并换算为人民币；OpenAI OAuth 登录模式不显示价格，只显示 Codex 限额。
 - 检测 `openai` provider 的 OAuth 登录状态并显示 Codex 限额。
 - 基于当前 session 的 assistant 消息 token 用量重新计算人民币费用。
@@ -61,8 +62,12 @@
 | gpt-5.4 | USD/CNY 汇率换算，> 272K 输入 | 0.5 美元 | 5 美元 | 22.5 美元 |
 | gpt-5.4-mini | USD/CNY 汇率换算 | 0.075 美元 | 0.75 美元 | 4.5 美元 |
 | gemini-3.5-flash | USD/CNY 汇率换算 | 0.15 美元 | 1.5 美元 | 9 美元 |
+| hy3-preview | < 16K | 0.4 元 | 1.2 元 | 4 元 |
+| hy3-preview | [16K, 32K) | 0.6 元 | 1.6 元 | 6.4 元 |
+| hy3-preview | >= 32K | 0.8 元 | 2 元 | 8 元 |
 
 ZhipuAI 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，32K 及以上走高档。
+Tencent TokenHub 的 hy3-preview 按本次请求的缓存命中输入与缓存未命中输入之和判断，< 16K 走低档，[16K, 32K) 走中档，>= 32K 走高档。
 qwen3.7-max 当前按限时五折计价，官方暂未公布结束时间。qwen3.6-plus 超过 256K 上下文会在 TUI 中提示高价档。多轮对话后缓存命中为 0 时，TUI 会显示通用价格警告。
 minimax-m3 的上下文档位按本次请求的缓存命中输入与缓存未命中输入之和判断，512K 以上走高档并提示价格高昂；低档限时五折特惠将于 2026-06-08 00:00:00 +08:00 结束。
 Grok Build 价格单位为美元 / 百万 tokens，插件会异步请求 `https://huilv.lzy1.fun/api/huilv` 的 USD/CNY 汇率；成功后自动换算为人民币计费，未获取到汇率前会先显示等待提示。
@@ -116,4 +121,4 @@ bun run build
 
 ## 说明
 
-DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，moonshot China 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。Xiaomi MiMo、ZhipuAI、Alibaba Cloud、MiniMax 暂不支持余额接口，因此只统计费用。Codex 限额通过本地 OpenAI OAuth 凭据查询。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费与限额以官方账单和官方控制台为准。
+DeepSeek 余额接口使用 `GET https://api.deepseek.com/user/balance`，moonshot China 余额接口使用 `GET https://api.moonshot.cn/v1/users/me/balance`。Xiaomi MiMo、ZhipuAI、Alibaba Cloud、MiniMax、Tencent TokenHub 暂不支持余额接口，因此只统计费用。Codex 限额通过本地 OpenAI OAuth 凭据查询。插件不会显示或记录 API Key。费用统计只在本地 TUI 中展示，实际扣费与限额以官方账单和官方控制台为准。

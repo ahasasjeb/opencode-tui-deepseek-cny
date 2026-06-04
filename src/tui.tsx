@@ -76,7 +76,7 @@ function View(props: { api: TuiPluginApi; options: Options; session_id: string }
   const activeBalanceProviders = createMemo(() => activeProviders().filter(supportsBalance))
   const hasTrackedUsage = createMemo(() => activeProviders().length > 0)
   const needsUsdCnyRate = createMemo(() =>
-    activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai"),
+    activeProviders().some((item) => item.id === "openrouter" || item.id === "xai" || item.id === "anthropic" || item.id === "openai" || item.id === "google" || item.id === "google-vertex"),
   )
   const codexEnabled = createMemo(() => hasOpenAIOAuthProvider(props.api.state.provider) && hasOpenAIUsage(usageMessages()))
   const copilotEnabled = createMemo(

@@ -16,6 +16,10 @@ export type AnthropicModelID = "claude-sonnet-4-6" | "claude-opus-4-6" | "claude
 
 export type OpenAIModelID = "gpt-5.5" | "gpt-5.4" | "gpt-5.4-mini"
 
+export type GoogleVertexModelID = "gemini-3.5-flash"
+
+export type GoogleModelID = "gemini-3.5-flash"
+
 type TrackedProviderEntry = {
   id: string
   label: string
@@ -85,6 +89,18 @@ export const TRACKED_PROVIDERS = [
     env: [],
     balance: false,
   },
+  {
+    id: "google",
+    label: "Google",
+    env: [],
+    balance: false,
+  },
+  {
+    id: "google-vertex",
+    label: "Google Vertex",
+    env: [],
+    balance: false,
+  },
 ] as const satisfies readonly TrackedProviderEntry[]
 
 export type TrackedProviderID = (typeof TRACKED_PROVIDERS)[number]["id"]
@@ -98,6 +114,8 @@ export type TrackedModelID =
   | GrokBuildModelID
   | AnthropicModelID
   | OpenAIModelID
+  | GoogleVertexModelID
+  | GoogleModelID
 export type TrackedProvider = (typeof TRACKED_PROVIDERS)[number]
 export type BalanceTrackedProvider = Extract<TrackedProvider, { balance: true }>
 export type BalanceProviderID = BalanceTrackedProvider["id"]
@@ -351,6 +369,12 @@ const gpt54MiniUsdPrice = {
   output: 4.5,
 }
 
+const gemini35FlashUsdPrice = {
+  cacheHitInput: 0.15,
+  cacheMissInput: 1.5,
+  output: 9,
+}
+
 const MODEL_PRICES: readonly ModelPriceEntry[] = [
   {
     providerID: "deepseek",
@@ -507,6 +531,20 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelLabel: "GPT-5.4 mini",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, gpt54MiniUsdPrice),
   },
+  {
+    providerID: "google",
+    providerLabel: "Google",
+    modelID: "gemini-3.5-flash",
+    modelLabel: "Gemini 3.5 Flash",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, gemini35FlashUsdPrice),
+  },
+  {
+    providerID: "google-vertex",
+    providerLabel: "Google Vertex",
+    modelID: "gemini-3.5-flash",
+    modelLabel: "Gemini 3.5 Flash",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, gemini35FlashUsdPrice),
+  },
 ]
 
 export function trackedModel(providerID: string, modelID: string) {
@@ -520,6 +558,9 @@ export function priceForModel(modelID: TrackedModelID, time = Date.now(), inputT
   if (modelID === "kimi-k2.6") return kimiK26Price
   if (modelID === "mimo-v2.5") return mimoV25Price
   if (modelID === "mimo-v2.5-pro") return mimoV25ProPrice
+  if (modelID === "gemini-3.5-flash") {
+    return MODEL_PRICES.find((item) => item.modelID === modelID && item.providerID === "google")!.priceFor(time, inputTokens, options)
+  }
   return MODEL_PRICES.find((item) => item.modelID === modelID)!.priceFor(time, inputTokens, options)
 }
 

@@ -579,6 +579,76 @@ test("Anthropic cache write 1h 估算仅对 Claude 模型有值", () => {
   expect(summary.cacheWrite1hCostCny).toBe(71)
 })
 
+test("按 Google 和 Google Vertex Gemini 3.5 Flash 美元价格转换人民币统计", () => {
+  expect(priceForModel("gemini-3.5-flash", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 1.065,
+    cacheMissInput: 10.65,
+    output: 63.9,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "google",
+        modelID: "gemini-3.5-flash",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "google-vertex",
+        modelID: "gemini-3.5-flash",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(150.165)
+  expect(summary.models.map((item) => `${item.providerID}:${item.modelID}`)).toEqual([
+    "google:gemini-3.5-flash",
+    "google-vertex:gemini-3.5-flash",
+  ])
+})
+
+test("Gemini 3.5 Flash 汇率未就绪时先给出提示", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "google",
+      modelID: "gemini-3.5-flash",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(0)
+  expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
+})
+
 test("按 OpenAI API 美元价格转换人民币统计并处理长上下文", () => {
   expect(priceForModel("gpt-5.5", Date.now(), 272_000, { usdCnyRate: 7.1 })).toEqual({
     cacheHitInput: 3.55,

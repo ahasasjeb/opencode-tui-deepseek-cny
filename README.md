@@ -11,6 +11,7 @@
 - 统计 `alibaba-cn` 提供商下的 `qwen3.7-max`、`qwen3.6-plus`，按上下文长度和当前优惠计费，仅统计费用，不查余额。
 - 统计 `minimax-cn` 提供商下的 `minimax-m3`，按上下文长度和 2026-06-08 00:00 前特惠计费，仅统计费用，不查余额。
 - 统计 `openrouter` 或 `xai` 提供商下的 `grok-build-0.1`、`x-ai/grok-build-0.1`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
+- 统计 `openrouter` 提供商下的 `qwen/qwen3.5-122b-a10b`、`qwen/qwen3.6-27b`、`qwen/qwen3.5-9b`、`qwen/qwen3.5-35b-a3b`、`qwen/qwen3.6-35b-a3b`、`qwen/qwen3.5-397b-a17b`、`qwen/qwen3.5-27b`、`nvidia/nemotron-3-ultra-550b-a55b`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 统计 `anthropic` 提供商下的 `claude-sonnet-4-6`、`claude-opus-4-6`、`claude-opus-4-7`、`claude-opus-4-8`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 统计 `google` 或 `google-vertex` 提供商下的 `gemini-3.5-flash`，后台获取 USD/CNY 汇率并换算为人民币，仅统计费用，不查余额。
 - 统计 `tencent-tokenhub` 提供商下的 `hy3-preview`，按输入长度阶梯计费，仅统计费用，不查余额。
@@ -54,6 +55,14 @@
 | minimax-m3 | <= 512K，2026-06-08 00:00 起 | 0.84 元 | 4.2 元 | 16.8 元 |
 | minimax-m3 | > 512K 且 <= 1M | 1.68 元 | 8.4 元 | 33.6 元 |
 | grok-build-0.1 / x-ai/grok-build-0.1 | USD/CNY 汇率换算 | 0.2 美元 | 1 美元 | 2 美元 |
+| qwen/qwen3.5-122b-a10b | USD/CNY 汇率换算，缓存命中等同输入价 | 0.26 美元 | 0.26 美元 | 2.08 美元 |
+| qwen/qwen3.6-27b | USD/CNY 汇率换算，缓存命中按 Ambient 端点 0.16 美元 | 0.16 美元 | 0.29 美元 | 3.2 美元 |
+| qwen/qwen3.5-9b | USD/CNY 汇率换算，缓存命中等同输入价 | 0.04 美元 | 0.04 美元 | 0.15 美元 |
+| qwen/qwen3.5-35b-a3b | USD/CNY 汇率换算，缓存命中按 DeepInfra 端点 0.05 美元 | 0.05 美元 | 0.14 美元 | 1 美元 |
+| qwen/qwen3.6-35b-a3b | USD/CNY 汇率换算，缓存命中按 Ambient 端点 0.05 美元 | 0.05 美元 | 0.14 美元 | 1 美元 |
+| qwen/qwen3.5-397b-a17b | USD/CNY 汇率换算，缓存命中按 Morph 端点 0.34 美元 | 0.34 美元 | 0.39 美元 | 2.34 美元 |
+| qwen/qwen3.5-27b | USD/CNY 汇率换算，缓存命中等同输入价 | 0.195 美元 | 0.195 美元 | 1.56 美元 |
+| nvidia/nemotron-3-ultra-550b-a55b | USD/CNY 汇率换算，DeepInfra 端点 cache_read 0.15 美元 | 0.15 美元 | 0.5 美元 | 2.5 美元 |
 | claude-sonnet-4-6 | USD/CNY 汇率换算，缓存写入按 5m 价 3.75 美元 | 0.3 美元 | 3 美元 | 15 美元 |
 | claude-opus-4-6 / claude-opus-4-7 / claude-opus-4-8 | USD/CNY 汇率换算，缓存写入按 5m 价 6.25 美元 | 0.5 美元 | 5 美元 | 25 美元 |
 | gpt-5.5 | USD/CNY 汇率换算，<= 272K 输入 | 0.5 美元 | 5 美元 | 30 美元 |

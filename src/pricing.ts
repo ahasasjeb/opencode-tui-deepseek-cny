@@ -12,6 +12,17 @@ export type MiniMaxChinaModelID = "minimax-m3"
 
 export type GrokBuildModelID = "grok-build-0.1" | "x-ai/grok-build-0.1"
 
+export type OpenRouterQwenModelID =
+  | "qwen/qwen3.5-122b-a10b"
+  | "qwen/qwen3.6-27b"
+  | "qwen/qwen3.5-9b"
+  | "qwen/qwen3.5-35b-a3b"
+  | "qwen/qwen3.6-35b-a3b"
+  | "qwen/qwen3.5-397b-a17b"
+  | "qwen/qwen3.5-27b"
+
+export type OpenRouterNemotronModelID = "nvidia/nemotron-3-ultra-550b-a55b"
+
 export type AnthropicModelID = "claude-sonnet-4-6" | "claude-opus-4-6" | "claude-opus-4-7" | "claude-opus-4-8"
 
 export type OpenAIModelID = "gpt-5.5" | "gpt-5.4" | "gpt-5.4-mini"
@@ -120,6 +131,8 @@ export type TrackedModelID =
   | AlibabaChinaModelID
   | MiniMaxChinaModelID
   | GrokBuildModelID
+  | OpenRouterQwenModelID
+  | OpenRouterNemotronModelID
   | AnthropicModelID
   | OpenAIModelID
   | GoogleVertexModelID
@@ -346,6 +359,54 @@ const grokBuildUsdPrice = {
   output: 2,
 }
 
+const qwen35_122bA10bUsdPrice = {
+  cacheHitInput: 0.26,
+  cacheMissInput: 0.26,
+  output: 2.08,
+}
+
+const qwen36_27bUsdPrice = {
+  cacheHitInput: 0.16,
+  cacheMissInput: 0.29,
+  output: 3.2,
+}
+
+const qwen35_9bUsdPrice = {
+  cacheHitInput: 0.04,
+  cacheMissInput: 0.04,
+  output: 0.15,
+}
+
+const qwen35_35bA3bUsdPrice = {
+  cacheHitInput: 0.05,
+  cacheMissInput: 0.14,
+  output: 1,
+}
+
+const qwen36_35bA3bUsdPrice = {
+  cacheHitInput: 0.05,
+  cacheMissInput: 0.14,
+  output: 1,
+}
+
+const qwen35_397bA17bUsdPrice = {
+  cacheHitInput: 0.34,
+  cacheMissInput: 0.39,
+  output: 2.34,
+}
+
+const qwen35_27bUsdPrice = {
+  cacheHitInput: 0.195,
+  cacheMissInput: 0.195,
+  output: 1.56,
+}
+
+const nemotron3Ultra550bA55bUsdPrice = {
+  cacheHitInput: 0.15,
+  cacheMissInput: 0.5,
+  output: 2.5,
+}
+
 const claudeSonnet46UsdPrice = {
   cacheHitInput: 0.3,
   cacheMissInput: 3,
@@ -499,6 +560,62 @@ const MODEL_PRICES: readonly ModelPriceEntry[] = [
     modelID: "x-ai/grok-build-0.1",
     modelLabel: "x-ai/grok-build-0.1",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, grokBuildUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.5-122b-a10b",
+    modelLabel: "qwen/qwen3.5-122b-a10b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen35_122bA10bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.6-27b",
+    modelLabel: "qwen/qwen3.6-27b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen36_27bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.5-9b",
+    modelLabel: "qwen/qwen3.5-9b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen35_9bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.5-35b-a3b",
+    modelLabel: "qwen/qwen3.5-35b-a3b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen35_35bA3bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.6-35b-a3b",
+    modelLabel: "qwen/qwen3.6-35b-a3b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen36_35bA3bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.5-397b-a17b",
+    modelLabel: "qwen/qwen3.5-397b-a17b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen35_397bA17bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "qwen/qwen3.5-27b",
+    modelLabel: "qwen/qwen3.5-27b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, qwen35_27bUsdPrice),
+  },
+  {
+    providerID: "openrouter",
+    providerLabel: "OpenRouter",
+    modelID: "nvidia/nemotron-3-ultra-550b-a55b",
+    modelLabel: "nvidia/nemotron-3-ultra-550b-a55b",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, nemotron3Ultra550bA55bUsdPrice),
   },
   {
     providerID: "xai",

@@ -446,6 +446,161 @@ test("Grok Build 汇率未就绪时先给出提示", () => {
   expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
 })
 
+test("按 OpenRouter Qwen3.5 和 Qwen3.6 美元价格转换人民币统计", () => {
+  const rate = 7.1
+  expect(priceForModel("qwen/qwen3.5-122b-a10b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 1.846,
+    cacheMissInput: 1.846,
+    output: 14.768,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.6-27b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 1.136,
+    cacheMissInput: 2.059,
+    output: 22.72,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.5-9b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 0.284,
+    cacheMissInput: 0.284,
+    output: 1.065,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.5-35b-a3b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 0.355,
+    cacheMissInput: 0.994,
+    output: 7.1,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.6-35b-a3b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 0.355,
+    cacheMissInput: 0.994,
+    output: 7.1,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.5-397b-a17b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 2.414,
+    cacheMissInput: 2.769,
+    output: 16.614,
+    discounted: false,
+  })
+  expect(priceForModel("qwen/qwen3.5-27b", Date.now(), 0, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 1.3845,
+    cacheMissInput: 1.3845,
+    output: 11.076,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "openrouter",
+        modelID: "qwen/qwen3.5-9b",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "openrouter",
+        modelID: "qwen/qwen3.5-35b-a3b",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "openrouter",
+        modelID: "qwen/qwen3.6-27b",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: rate },
+  )
+
+  expect(summary.turns).toBe(3)
+  expect(summary.costCny).toBe(34.861)
+  expect(summary.models.map((item) => item.modelID)).toEqual([
+    "qwen/qwen3.6-27b",
+    "qwen/qwen3.5-9b",
+    "qwen/qwen3.5-35b-a3b",
+  ])
+  expect(summary.models.every((item) => item.providerLabel === "OpenRouter")).toBe(true)
+})
+
+test("按 OpenRouter Nemotron 3 Ultra 美元价格转换人民币统计", () => {
+  expect(priceForModel("nvidia/nemotron-3-ultra-550b-a55b", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 1.065,
+    cacheMissInput: 3.55,
+    output: 17.75,
+    discounted: false,
+  })
+  expect(BALANCE_TRACKED_PROVIDERS.map((item) => item.id)).toEqual(["deepseek", "moonshotai-cn"])
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "openrouter",
+        modelID: "nvidia/nemotron-3-ultra-550b-a55b",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.turns).toBe(1)
+  expect(summary.costCny).toBe(22.365)
+  expect(summary.models[0]?.modelID).toBe("nvidia/nemotron-3-ultra-550b-a55b")
+  expect(summary.models[0]?.providerLabel).toBe("OpenRouter")
+})
+
+test("OpenRouter Qwen 汇率未就绪时先给出提示", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "openrouter",
+      modelID: "qwen/qwen3.5-9b",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(0)
+  expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
+})
+
 test("按 Anthropic Claude 美元价格转换人民币统计", () => {
 expect(priceForModel("claude-sonnet-4-6", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
     cacheHitInput: 2.13,

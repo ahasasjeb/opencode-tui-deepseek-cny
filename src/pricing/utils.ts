@@ -3,10 +3,10 @@ import type { Price, PricingOptions } from "./types.js"
 export const ZHIPU_CONTEXT_TIER_THRESHOLD_TOKENS = 32_000
 export const QWEN_PLUS_CONTEXT_TIER_THRESHOLD_TOKENS = 256_000
 export const MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS = 512_000
+export const MINIMAX_M3_MEDIUM_CONTEXT_THRESHOLD_TOKENS = 1_000_000
 export const OPENAI_LONG_CONTEXT_THRESHOLD_TOKENS = 272_000
 export const HY3_PREVIEW_SHORT_CONTEXT_THRESHOLD_TOKENS = 16_000
 export const HY3_PREVIEW_MEDIUM_CONTEXT_THRESHOLD_TOKENS = 32_000
-export const MINIMAX_M3_DISCOUNT_END_TIME = Date.parse("2026-06-08T00:00:00+08:00")
 export const QWEN_EXPENSIVE_CONTEXT_WARNING = "qwen3.6-plus 价格高昂警告"
 export const MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING = "minimax-m3 512K 到 1M 价格高昂警告"
 export const NO_CACHE_AFTER_MULTI_TURN_WARNING = "多轮对话缓存命中为 0，请注意价格"
@@ -34,14 +34,14 @@ export function qwenPlusTieredPrice(inputTokens: number, shortPrice: Price, long
 }
 
 export function minimaxM3TieredPrice(
-  time: number,
   inputTokens: number,
-  discountPrice: Price,
   shortPrice: Price,
+  mediumPrice: Price,
   longPrice: Price,
 ) {
-  if (inputTokens > MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS) return longPrice
-  return time < MINIMAX_M3_DISCOUNT_END_TIME ? discountPrice : shortPrice
+  if (inputTokens > MINIMAX_M3_MEDIUM_CONTEXT_THRESHOLD_TOKENS) return longPrice
+  if (inputTokens > MINIMAX_M3_CONTEXT_TIER_THRESHOLD_TOKENS) return mediumPrice
+  return shortPrice
 }
 
 export function hy3PreviewTieredPrice(

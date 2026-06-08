@@ -306,21 +306,26 @@ test("按 Alibaba China Qwen 人民币价格统计并给出模型提示", () => 
   ])
 })
 
-test("按 MiniMax M3 阶梯和限时五折人民币价格统计", () => {
+test("按 MiniMax M3 阶梯和永久五折人民币价格统计", () => {
   expect(priceForModel("minimax-m3", Date.parse("2026-06-07T23:59:59+08:00"), 512_000)).toEqual({
     cacheHitInput: 0.42,
     cacheMissInput: 2.1,
     output: 8.4,
-    discounted: true,
-    warnings: ["minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束"],
+    discounted: false,
   })
   expect(priceForModel("minimax-m3", Date.parse("2026-06-08T00:00:00+08:00"), 512_000)).toEqual({
+    cacheHitInput: 0.42,
+    cacheMissInput: 2.1,
+    output: 8.4,
+    discounted: false,
+  })
+  expect(priceForModel("minimax-m3", Date.parse("2026-06-01T00:00:00+08:00"), 512_001)).toEqual({
     cacheHitInput: 0.84,
     cacheMissInput: 4.2,
     output: 16.8,
     discounted: false,
   })
-  expect(priceForModel("minimax-m3", Date.parse("2026-06-07T23:59:59+08:00"), 512_001)).toEqual({
+  expect(priceForModel("minimax-m3", Date.parse("2026-06-01T00:00:00+08:00"), 1_000_001)).toEqual({
     cacheHitInput: 1.68,
     cacheMissInput: 8.4,
     output: 33.6,
@@ -365,15 +370,12 @@ test("按 MiniMax M3 阶梯和限时五折人民币价格统计", () => {
   ])
 
   expect(summary.turns).toBe(2)
-  expect(summary.costCny).toBe(47.182808)
+  expect(summary.costCny).toBe(28.232404)
   expect(summary.models.map((item) => item.modelID)).toEqual(["minimax-m3"])
   expect(summary.models[0]?.providerID).toBe("minimax-cn")
   expect(summary.models[0]?.providerLabel).toBe("MiniMax")
-  expect(summary.models[0]?.discountedTurns).toBe(1)
-  expect(summary.models[0]?.warnings).toEqual([
-    "minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束",
-    "minimax-m3 512K 到 1M 价格高昂警告",
-  ])
+  expect(summary.models[0]?.discountedTurns).toBe(0)
+  expect(summary.models[0]?.warnings).toEqual([])
 })
 
 test("按 OpenRouter 和 xAI Grok Build 美元价格转换人民币统计", () => {

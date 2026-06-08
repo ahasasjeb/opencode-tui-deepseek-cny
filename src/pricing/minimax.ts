@@ -1,15 +1,14 @@
 import type { Price, ModelPriceEntry } from "./types.js"
 import { minimaxM3TieredPrice, MINIMAX_M3_EXPENSIVE_CONTEXT_WARNING } from "./utils.js"
 
-export const minimaxM3ShortContextDiscountPrice: Price = {
+export const minimaxM3ShortContextPrice: Price = {
   cacheHitInput: 0.42,
   cacheMissInput: 2.1,
   output: 8.4,
-  discounted: true,
-  warnings: ["minimax-m3 上下文 <= 512K 当前按限时五折计价，特惠将于 2026-06-08 00:00:00 +08:00 结束"],
+  discounted: false,
 }
 
-export const minimaxM3ShortContextPrice: Price = {
+export const minimaxM3MediumContextPrice: Price = {
   cacheHitInput: 0.84,
   cacheMissInput: 4.2,
   output: 16.8,
@@ -30,6 +29,6 @@ export const MINIMAX_ENTRIES: readonly ModelPriceEntry[] = [
     providerLabel: "MiniMax",
     modelID: "minimax-m3",
     modelLabel: "MiniMax-M3",
-    priceFor: (time, inputTokens) => minimaxM3TieredPrice(time, inputTokens, minimaxM3ShortContextDiscountPrice, minimaxM3ShortContextPrice, minimaxM3LongContextPrice),
+    priceFor: (_time, inputTokens) => minimaxM3TieredPrice(inputTokens, minimaxM3ShortContextPrice, minimaxM3MediumContextPrice, minimaxM3LongContextPrice),
   },
 ]

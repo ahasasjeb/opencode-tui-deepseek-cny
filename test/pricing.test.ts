@@ -928,3 +928,251 @@ test("按 Tencent TokenHub hy3-preview 阶梯人民币价格统计", () => {
   expect(summary.models.map((item) => item.modelID)).toEqual(["hy3-preview"])
   expect(summary.models[0]?.providerLabel).toBe("Tencent TokenHub")
 })
+
+test("按 OpenCode Zen 免费模型统计费用为 0", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "opencode",
+      modelID: "big-pickle",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 1_000_000,
+          write: 0,
+        },
+      },
+    },
+    {
+      providerID: "opencode",
+      modelID: "deepseek-v4-flash-free",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(0)
+  expect(summary.models.map((item) => item.modelID)).toEqual(["big-pickle", "deepseek-v4-flash-free"])
+  expect(summary.models[0]?.providerLabel).toBe("OpenCode Zen")
+})
+
+test("按 OpenCode Zen GPT-5.5 美元价格转换人民币并处理长上下文", () => {
+  const rate = 7.1
+  expect(priceForModel("gpt-5.5", Date.now(), 272_000, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    output: 213,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "opencode",
+        modelID: "gpt-5.5",
+        tokens: {
+          input: 272_001,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "openai",
+        modelID: "gpt-5.5",
+        tokens: {
+          input: 272_001,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: rate },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(677.624142)
+  expect(summary.models.map((item) => `${item.providerID}:${item.modelID}`)).toEqual([
+    "openai:gpt-5.5",
+    "opencode:gpt-5.5",
+  ])
+})
+
+test("按 OpenCode Zen Claude Opus 4.5 美元价格转换人民币统计", () => {
+  expect(priceForModel("claude-opus-4-5", Date.now(), 0, { usdCnyRate: 7.1 })).toEqual({
+    cacheHitInput: 3.55,
+    cacheMissInput: 35.5,
+    cacheWriteInput: 44.375,
+    output: 177.5,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "opencode",
+        modelID: "claude-opus-4-5",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: 7.1 },
+  )
+
+  expect(summary.turns).toBe(1)
+  expect(summary.costCny).toBe(213)
+  expect(summary.models[0]?.providerID).toBe("opencode")
+  expect(summary.models[0]?.providerLabel).toBe("OpenCode Zen")
+})
+
+test("按 OpenCode Zen Claude Sonnet 4 阶梯美元价格转换人民币统计", () => {
+  const rate = 7.1
+  expect(priceForModel("claude-sonnet-4", Date.now(), 200_000, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 2.13,
+    cacheMissInput: 21.3,
+    cacheWriteInput: 26.625,
+    output: 106.5,
+    discounted: false,
+  })
+  expect(priceForModel("claude-sonnet-4", Date.now(), 200_001, { usdCnyRate: rate })).toEqual({
+    cacheHitInput: 4.26,
+    cacheMissInput: 42.6,
+    cacheWriteInput: 53.25,
+    output: 159.75,
+    discounted: false,
+  })
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "opencode",
+        modelID: "claude-sonnet-4",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+      {
+        providerID: "opencode",
+        modelID: "claude-sonnet-4",
+        tokens: {
+          input: 200_001,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: rate },
+  )
+
+  expect(summary.turns).toBe(2)
+  expect(summary.costCny).toBe(374.880043)
+  expect(summary.models[0]?.providerLabel).toBe("OpenCode Zen")
+})
+
+test("按 OpenCode Zen Kimi K2.5 美元价格转换人民币统计", () => {
+  const rate = 7.1
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "opencode",
+        modelID: "kimi-k2.5",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 1_000_000,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: rate },
+  )
+
+  expect(summary.turns).toBe(1)
+  expect(summary.costCny).toBe(26.27)
+  expect(summary.models[0]?.providerLabel).toBe("OpenCode Zen")
+})
+
+test("按 OpenCode Zen DeepSeek V4 Flash 美元价格转换人民币统计", () => {
+  const rate = 7.1
+
+  const summary = calculateTrackedSession(
+    [
+      {
+        providerID: "opencode",
+        modelID: "deepseek-v4-flash",
+        tokens: {
+          input: 1_000_000,
+          output: 1_000_000,
+          reasoning: 0,
+          cache: {
+            read: 0,
+            write: 0,
+          },
+        },
+      },
+    ],
+    { usdCnyRate: rate },
+  )
+
+  expect(summary.turns).toBe(1)
+  expect(summary.costCny).toBe(2.982)
+  expect(summary.models[0]?.providerLabel).toBe("OpenCode Zen")
+})
+
+test("OpenCode Zen 汇率未就绪时先给出提示", () => {
+  const summary = calculateTrackedSession([
+    {
+      providerID: "opencode",
+      modelID: "gpt-5.5",
+      tokens: {
+        input: 1_000_000,
+        output: 1_000_000,
+        reasoning: 0,
+        cache: {
+          read: 0,
+          write: 0,
+        },
+      },
+    },
+  ])
+
+  expect(summary.costCny).toBe(0)
+  expect(summary.models[0]?.warnings).toEqual(["正在获取美元兑人民币汇率，成功后自动换算人民币价格"])
+})

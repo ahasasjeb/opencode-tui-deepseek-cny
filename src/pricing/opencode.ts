@@ -20,8 +20,11 @@ export const opencodekimik2thinkingUsdPrice = { cacheHitInput: 0.4, cacheMissInp
 export const opencodeqwen35plusUsdPrice = { cacheHitInput: 0.02, cacheMissInput: 0.2, cacheWriteInput: 0.25, output: 1.2 }
 export const opencodeqwen36plusUsdPrice = { cacheHitInput: 0.05, cacheMissInput: 0.5, cacheWriteInput: 0.625, output: 3 }
 export const opencodeqwen3coderUsdPrice = { cacheHitInput: 0, cacheMissInput: 0.45, output: 1.8 }
+export const opencodeqwen37maxUsdPrice = { cacheHitInput: 0.5, cacheMissInput: 2.5, cacheWriteInput: 3.125, output: 7.5 }
+export const opencodeqwen37plusUsdPrice = { cacheHitInput: 0.04, cacheMissInput: 0.4, cacheWriteInput: 0.5, output: 1.6 }
 
-export const opencodedeepseekv4flashUsdPrice = { cacheHitInput: 0.03, cacheMissInput: 0.14, output: 0.28 }
+export const opencodedeepseekv4flashUsdPrice = { cacheHitInput: 0.028, cacheMissInput: 0.14, output: 0.28 }
+export const opencodedeepseekv4proUsdPrice = { cacheHitInput: 0.145, cacheMissInput: 1.74, output: 3.48 }
 export const opencodegrokbuild01UsdPrice = { cacheHitInput: 0.2, cacheMissInput: 1, output: 2 }
 
 export const opencodeclaudeopus45UsdPrice = { cacheHitInput: 0.5, cacheMissInput: 5, cacheWriteInput: 6.25, output: 25 }
@@ -38,6 +41,7 @@ export const opencodeclaudesonnet46UsdPrice = { cacheHitInput: 0.3, cacheMissInp
 
 export const opencodeclaudehaiku45UsdPrice = { cacheHitInput: 0.1, cacheMissInput: 1, cacheWriteInput: 1.25, output: 5 }
 export const opencodeclaude35haikuUsdPrice = { cacheHitInput: 0.08, cacheMissInput: 0.8, cacheWriteInput: 1, output: 4 }
+export const opencodeclaudefable5UsdPrice = { cacheHitInput: 1, cacheMissInput: 10, cacheWriteInput: 12.5, output: 50 }
 
 export const opencodegemini35flashUsdPrice = { cacheHitInput: 0.15, cacheMissInput: 1.5, output: 9 }
 export const opencodegemini31proShortContextUsdPrice = { cacheHitInput: 0.2, cacheMissInput: 2, output: 12 }
@@ -87,6 +91,7 @@ export const OPENCODE_ENTRIES: readonly ModelPriceEntry[] = [
   { providerID: "opencode", providerLabel: "OpenCode Zen", modelID: "grok-code", modelLabel: "Grok Code", priceFor: () => opencodeFreePrice },
   { providerID: "opencode", providerLabel: "OpenCode Zen", modelID: "kimi-k2.5-free", modelLabel: "Kimi K2.5 Free", priceFor: () => opencodeFreePrice },
   { providerID: "opencode", providerLabel: "OpenCode Zen", modelID: "ling-2.6-flash-free", modelLabel: "Ling 2.6 Flash Free", priceFor: () => opencodeFreePrice },
+  { providerID: "opencode", providerLabel: "OpenCode Zen", modelID: "north-mini-code-free", modelLabel: "North Mini Code Free", priceFor: () => opencodeFreePrice },
   {
     providerID: "opencode",
     providerLabel: "OpenCode Zen",
@@ -181,6 +186,13 @@ export const OPENCODE_ENTRIES: readonly ModelPriceEntry[] = [
   {
     providerID: "opencode",
     providerLabel: "OpenCode Zen",
+    modelID: "qwen3.7-plus",
+    modelLabel: "Qwen3.7 Plus",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodeqwen37plusUsdPrice),
+  },
+  {
+    providerID: "opencode",
+    providerLabel: "OpenCode Zen",
     modelID: "qwen3-coder",
     modelLabel: "Qwen3 Coder",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodeqwen3coderUsdPrice),
@@ -188,9 +200,23 @@ export const OPENCODE_ENTRIES: readonly ModelPriceEntry[] = [
   {
     providerID: "opencode",
     providerLabel: "OpenCode Zen",
+    modelID: "qwen3.7-max",
+    modelLabel: "Qwen3.7 Max",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodeqwen37maxUsdPrice),
+  },
+  {
+    providerID: "opencode",
+    providerLabel: "OpenCode Zen",
     modelID: "deepseek-v4-flash",
     modelLabel: "DeepSeek V4 Flash",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodedeepseekv4flashUsdPrice),
+  },
+  {
+    providerID: "opencode",
+    providerLabel: "OpenCode Zen",
+    modelID: "deepseek-v4-pro",
+    modelLabel: "DeepSeek V4 Pro",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodedeepseekv4proUsdPrice),
   },
   {
     providerID: "opencode",
@@ -268,6 +294,13 @@ export const OPENCODE_ENTRIES: readonly ModelPriceEntry[] = [
     modelID: "claude-3-5-haiku",
     modelLabel: "Claude Haiku 3.5",
     priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodeclaude35haikuUsdPrice),
+  },
+  {
+    providerID: "opencode",
+    providerLabel: "OpenCode Zen",
+    modelID: "claude-fable-5",
+    modelLabel: "Claude Fable 5",
+    priceFor: (_time, _inputTokens, options) => usdPrice(options.usdCnyRate, opencodeclaudefable5UsdPrice),
   },
   {
     providerID: "opencode",

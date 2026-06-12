@@ -64,6 +64,7 @@ export type OpenCodeModelID =
   | "glm-4.7"
   | "kimi-k2.5"
   | "kimi-k2.6"
+  | "kimi-k2.7-code"
   | "kimi-k2"
   | "kimi-k2-thinking"
   | "qwen3.5-plus"

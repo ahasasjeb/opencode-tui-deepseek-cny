@@ -13,7 +13,13 @@ export const kimiK26Price: Price = {
   output: 27,
   discounted: false,
 }
-
+//kimi-k2.7-code
+export const kimiK27CodePrice: Price = {
+  cacheHitInput: 1.3,
+  cacheMissInput: 6.5,
+  output: 27,
+  discounted: false,
+}
 export const KIMI_ENTRIES: readonly ModelPriceEntry[] = [
   {
     providerID: "moonshotai-cn",
@@ -29,4 +35,11 @@ export const KIMI_ENTRIES: readonly ModelPriceEntry[] = [
     modelLabel: "K2.6",
     priceFor: () => kimiK26Price,
   },
+  {
+    providerID: "moonshotai-cn",
+    providerLabel: "moonshot China",
+    modelID: "kimi-k2.7-code",
+    modelLabel: "K2.7 Code",
+    priceFor: () => kimiK27CodePrice,
+  }
 ]
